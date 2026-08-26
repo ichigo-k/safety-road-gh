@@ -1,0 +1,159 @@
+name: Build Android APK & PWA Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-pwa:
+    name: Build PWA (Web) Version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: mobile/package.json
+
+      - name: Install Mobile Dependencies
+        run: |
+          cd mobile
+          npm ci || npm install --legacy-peer-deps
+
+      - name: Export Expo Web PWA Bundle
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
+          EXPO_PUBLIC_BACKEND_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
+        run: |
+          cd mobile
+          npx expo export --platform web
+
+      - name: Zip PWA Output
+        run: |
+          cd mobile
+          zip -r ../SafetyRoadGH-PWA.zip dist/
+
+      - name: Upload PWA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SafetyRoadGH-PWA
+          path: SafetyRoadGH-PWA.zip
+
+  build-android:
+    name: Build Standalone Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: mobile/package.json
+
+      - name: Install Mobile Dependencies
+        run: |
+          cd mobile
+          npm ci || npm install --legacy-peer-deps
+
+      - name: Generate Android Native Prebuild
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
+          EXPO_PUBLIC_BACKEND_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
+        run: |
+          cd mobile
+          npx expo prebuild --platform android --no-install
+
+      - name: Grant Execute Permission for Gradle
+        run: |
+          cd mobile/android
+          chmod +x gradlew
+
+      - name: Build Android APK Release
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
+          EXPO_PUBLIC_BACKEND_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
+        run: |
+          cd mobile/android
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Locate and Rename APK File
+        run: |
+          APK_PATH=$(find mobile/android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -f "$APK_PATH" ]; then
+            cp "$APK_PATH" SafetyRoadGH.apk
+            echo "APK generated successfully at SafetyRoadGH.apk"
+          else
+            echo "Error: APK build output file not found."
+            exit 1
+          fi
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SafetyRoadGH-Android-APK
+          path: SafetyRoadGH.apk
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-pwa, build-android]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download PWA Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: SafetyRoadGH-PWA
+
+      - name: Download Android APK Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: SafetyRoadGH-Android-APK
+
+      - name: Generate Release Tag Name
+        id: tag
+        run: |
+          TAG_NAME="v1.0.0-$(date +'%Y%m%d%H%M')"
+          echo "release_tag=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release & Attach Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          name: Safety Road GH Release ${{ steps.tag.outputs.release_tag }}
+          body: |
+            ### Safety Road GH Release Downloads
+
+            - **Android APK**: Download `SafetyRoadGH.apk` to install directly on any Android device.
+            - **Web PWA Bundle**: Download `SafetyRoadGH-PWA.zip` for web hosting.
+
+            *Embedded Backend API URL:* Uses secrets configured in Repository Secrets (`EXPO_PUBLIC_API_URL` or `BACKEND_URL`).
+          draft: false
+          prerelease: false
+          files: |
+            SafetyRoadGH.apk
+            SafetyRoadGH-PWA.zip
