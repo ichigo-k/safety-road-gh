@@ -7,11 +7,17 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "backgroundColor": "#0f172a"
+      "backgroundColor": "#0f172a",
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.safetyroad.gh"
+      "bundleIdentifier": "com.safetyroad.gh",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Safety Road GH uses camera access to capture photographic evidence of road accidents and hazards.",
+        "NSLocationWhenInUseUsageDescription": "Safety Road GH uses your location to pinpoint accident hotspots and alert you when approaching dangerous road hazards."
+      }
     },
     "android": {
       "package": "com.safetyroad.gh",
@@ -31,7 +37,17 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "description": "Ghana National Road Accident & Hazard Reporting Network — Instant Emergency Help & Live Hotspot Radar",
+      "themeColor": "#0f172a",
+      "backgroundColor": "#0f172a",
+      "meta": {
+        "viewport": "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+        "apple-mobile-web-app-capable": "yes",
+        "apple-mobile-web-app-status-bar-style": "black-translucent",
+        "apple-mobile-web-app-title": "Safety Road GH",
+        "theme-color": "#0f172a"
+      }
     }
   }
 }

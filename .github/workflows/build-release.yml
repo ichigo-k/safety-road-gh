@@ -1,4 +1,4 @@
-name: Build Android APK & PWA Release
+name: Build Android APK, iOS PWA & Web Releases
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build-pwa:
-    name: Build PWA (Web) Version
+    name: Build iOS & Universal Web PWA Version
     runs-on: ubuntu-latest
 
     steps:
@@ -32,7 +32,7 @@ jobs:
           cd mobile
           npm ci || npm install --legacy-peer-deps
 
-      - name: Export Expo Web PWA Bundle
+      - name: Export Expo iOS & Web PWA Bundle
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
           EXPO_PUBLIC_BACKEND_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
@@ -40,16 +40,17 @@ jobs:
           cd mobile
           npx expo export --platform web
 
-      - name: Zip PWA Output
+      - name: Package iOS & Universal PWA Bundles
         run: |
           cd mobile
-          zip -r ../SafetyRoadGH-PWA.zip dist/
+          zip -r ../SafetyRoadGH-iOS-PWA.zip dist/
+          cp ../SafetyRoadGH-iOS-PWA.zip ../SafetyRoadGH-PWA.zip
 
-      - name: Upload PWA Artifact
+      - name: Upload iOS PWA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SafetyRoadGH-PWA
-          path: SafetyRoadGH-PWA.zip
+          name: SafetyRoadGH-iOS-PWA
+          path: SafetyRoadGH-iOS-PWA.zip
 
   build-android:
     name: Build Standalone Android APK
@@ -124,10 +125,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download PWA Artifact
+      - name: Download iOS PWA Artifact
         uses: actions/download-artifact@v4
         with:
-          name: SafetyRoadGH-PWA
+          name: SafetyRoadGH-iOS-PWA
 
       - name: Download Android APK Artifact
         uses: actions/download-artifact@v4
@@ -146,14 +147,16 @@ jobs:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           name: Safety Road GH Release ${{ steps.tag.outputs.release_tag }}
           body: |
-            ### Safety Road GH Release Downloads
+            ### Safety Road GH Downloadable Assets
 
-            - **Android APK**: Download `SafetyRoadGH.apk` to install directly on any Android device.
-            - **Web PWA Bundle**: Download `SafetyRoadGH-PWA.zip` for web hosting.
+            - **Android APK**: `SafetyRoadGH.apk` (Install directly on Android phones)
+            - **iOS PWA Bundle**: `SafetyRoadGH-iOS-PWA.zip` (Optimized for iOS Safari "Add to Home Screen" standalone app mode)
+            - **Universal Web PWA**: `SafetyRoadGH-PWA.zip`
 
-            *Embedded Backend API URL:* Uses secrets configured in Repository Secrets (`EXPO_PUBLIC_API_URL` or `BACKEND_URL`).
+            *Embedded Backend API URL:* Embedded from GitHub Secrets (`EXPO_PUBLIC_API_URL` / `BACKEND_URL`).
           draft: false
           prerelease: false
           files: |
             SafetyRoadGH.apk
+            SafetyRoadGH-iOS-PWA.zip
             SafetyRoadGH-PWA.zip
