@@ -1,0 +1,17 @@
+# Root GitIgnore for Safety Road GH
+.env
+.env.*
+*.env
+web/.env
+web/.env.*
+mobile/.env
+mobile/.env.*
+node_modules/
+web/node_modules/
+mobile/node_modules/
+.next/
+web/.next/
+dist/
+build/
+.DS_Store
+*.log

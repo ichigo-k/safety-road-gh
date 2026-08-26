@@ -1,0 +1,136 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CITIZEN
+  ADMIN
+  RESPONDER
+}
+
+enum ReportStatus {
+  PENDING
+  VERIFIED
+  DISPATCHED
+  RESOLVED
+  REJECTED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model User {
+  id              String            @id @default(uuid())
+  full_name       String
+  email           String            @unique
+  phone           String?
+  password_hash   String
+  role            Role              @default(CITIZEN)
+  is_verified     Boolean           @default(false)
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  accident_reports AccidentReport[]
+  road_hazards    RoadHazard[]
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model AccidentReport {
+  id            String       @id @default(uuid())
+  user_id       String
+  user          User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  accident_type String
+  description   String
+  vehicle_count Int          @default(0)
+  injured_count Int          @default(0)
+  latitude      Float
+  longitude     Float
+  location      String
+  image_url     String?
+  status        ReportStatus @default(PENDING)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+
+  @@map("accident_reports")
+}
+
+model RoadHazard {
+  id          String       @id @default(uuid())
+  user_id     String
+  user        User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  hazard_type String
+  description String
+  latitude    Float
+  longitude   Float
+  location    String
+  image_url   String?
+  status      ReportStatus @default(PENDING)
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+
+  @@map("road_hazards")
+}
+
+model RoadAlert {
+  id          String        @id @default(uuid())
+  title       String
+  description String
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  severity    AlertSeverity @default(MEDIUM)
+  active      Boolean       @default(true)
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+
+  @@map("road_alerts")
+}
+
+model EmergencyService {
+  id         String   @id @default(uuid())
+  name       String
+  type       String
+  phone      String
+  address    String
+  latitude   Float
+  longitude  Float
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("emergency_services")
+}
+
+model SafetyTip {
+  id          String   @id @default(uuid())
+  title       String
+  category    String
+  description String
+  image_url   String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("safety_tips")
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title      String
+  message    String
+  type       String
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@map("notifications")
+}
