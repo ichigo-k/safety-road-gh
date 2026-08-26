@@ -82,15 +82,32 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (networkError: any) {
+    throw new Error(
+      networkError.message === 'Network request failed'
+        ? 'Cannot reach server. Check your internet connection or API URL.'
+        : networkError.message || 'Network request failed'
+    );
+  }
 
-  const data = await response.json();
+  const text = await response.text();
+  let data: any = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { error: text };
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || 'API Request failed');
+    throw new Error(data.error || `Request failed (${response.status})`);
   }
 
   return data;
