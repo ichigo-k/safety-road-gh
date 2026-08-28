@@ -42,7 +42,7 @@ export default function EmergencyScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.headerTitle}>Emergency Services (Ghana)</Text>
         <Text style={styles.headerSubtitle}>Instant direct dial for Police, Fire, Ambulance & Hospitals</Text>
@@ -105,7 +105,7 @@ export default function EmergencyScreen() {
 
               <View style={styles.callRow}>
                 <TouchableOpacity style={styles.callButton} onPress={() => makeCall(service.phone)}>
-                  <Icon name="phone" size={14} color="#0f172a" />
+                  <Icon name="phone" size={14} color="#ffffff" />
                   <Text style={styles.callButtonText}>Call {service.phone}</Text>
                 </TouchableOpacity>
 
@@ -126,7 +126,7 @@ export default function EmergencyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
     padding: 20,
@@ -134,23 +134,23 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#ffffff',
+    color: '#172b4d',
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: '#667085',
     marginBottom: 16,
   },
   nationalHotlineCard: {
-    backgroundColor: '#7f1d1d',
+    backgroundColor: '#FEF2F2',
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#b91c1c',
+    borderColor: '#FECACA',
     marginBottom: 20,
   },
   hotlineHeader: {
-    color: '#fef08a',
+    color: '#DC2626',
     fontWeight: '900',
     fontSize: 11,
     letterSpacing: 1,
@@ -163,19 +163,21 @@ const styles = StyleSheet.create({
   },
   hotlineChip: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   hotlineTitle: {
-    color: '#ffffff',
+    color: '#172b4d',
     fontSize: 11,
     fontWeight: '800',
     marginTop: 4,
   },
   hotlineNum: {
-    color: '#fef08a',
+    color: '#DC2626',
     fontSize: 12,
     fontWeight: '900',
     marginTop: 2,
@@ -187,37 +189,37 @@ const styles = StyleSheet.create({
   },
   filterBtn: {
     flex: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#F1F5F9',
     paddingVertical: 8,
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E2E8F0',
   },
   filterBtnActive: {
     backgroundColor: '#10b981',
     borderColor: '#10b981',
   },
   filterText: {
-    color: '#94a3b8',
+    color: '#64748B',
     fontSize: 10,
     fontWeight: '800',
   },
   filterTextActive: {
-    color: '#0f172a',
+    color: '#ffffff',
   },
   loadingText: {
-    color: '#64748b',
+    color: '#94A3B8',
     textAlign: 'center',
     padding: 20,
   },
   card: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E2E8F0',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -228,17 +230,17 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
     color: '#10b981',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
   },
   regionText: {
-    color: '#94a3b8',
+    color: '#94A3B8',
     fontSize: 11,
   },
   serviceName: {
-    color: '#ffffff',
+    color: '#172b4d',
     fontWeight: '800',
     fontSize: 15,
     marginBottom: 4,
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   address: {
-    color: '#cbd5e1',
+    color: '#667085',
     fontSize: 12,
   },
   callRow: {
@@ -268,19 +270,21 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   callButtonText: {
-    color: '#0f172a',
+    color: '#ffffff',
     fontWeight: '900',
     fontSize: 13,
   },
   altCallButton: {
-    backgroundColor: '#334155',
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   altCallButtonText: {
-    color: '#cbd5e1',
+    color: '#475569',
     fontWeight: '700',
     fontSize: 11,
   },

@@ -1,31 +1,10 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 generator client {
   provider = "prisma-client-js"
-}
-
-enum Role {
-  CITIZEN
-  ADMIN
-  RESPONDER
-}
-
-enum ReportStatus {
-  PENDING
-  VERIFIED
-  DISPATCHED
-  RESOLVED
-  REJECTED
-}
-
-enum AlertSeverity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
 }
 
 model User {
@@ -34,7 +13,7 @@ model User {
   email           String            @unique
   phone           String?
   password_hash   String
-  role            Role              @default(CITIZEN)
+  role            String            @default("CITIZEN")
   is_verified     Boolean           @default(false)
   created_at      DateTime          @default(now())
   updated_at      DateTime          @updatedAt
@@ -57,7 +36,7 @@ model AccidentReport {
   longitude     Float
   location      String
   image_url     String?
-  status        ReportStatus @default(PENDING)
+  status        String       @default("PENDING")
   created_at    DateTime     @default(now())
   updated_at    DateTime     @updatedAt
 
@@ -74,7 +53,7 @@ model RoadHazard {
   longitude   Float
   location    String
   image_url   String?
-  status      ReportStatus @default(PENDING)
+  status      String       @default("PENDING")
   created_at  DateTime     @default(now())
   updated_at  DateTime     @updatedAt
 
@@ -88,7 +67,7 @@ model RoadAlert {
   location    String?
   latitude    Float?
   longitude   Float?
-  severity    AlertSeverity @default(MEDIUM)
+  severity    String        @default("MEDIUM")
   active      Boolean       @default(true)
   created_at  DateTime      @default(now())
   updated_at  DateTime      @updatedAt

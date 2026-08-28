@@ -7,17 +7,17 @@ interface OnboardingScreenProps {
 
 const slides = [
   {
-    icon: '🚨',
+    icon: 'report',
     title: 'Report Accidents & Hazards',
     description: 'Capture exact GPS location coordinates and snap photographic evidence of road hazards or collisions directly to Ghana MTTD.',
   },
   {
-    icon: '🚑',
+    icon: 'emergency',
     title: 'Instant Emergency Assistance',
     description: 'Directly dial Ambulance (193), Police (18555), Fire Service (192), and discover nearby hospitals in Accra, Kumasi, and across Ghana.',
   },
   {
-    icon: '💡',
+    icon: 'tips',
     title: 'Live Road Alerts & Safety Tips',
     description: 'Receive real-time traffic broadcast alerts from road authorities and access safety guidelines tailored for drivers, riders, and pedestrians.',
   },
@@ -36,9 +36,15 @@ export default function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
 
   const currentSlide = slides[currentIndex];
 
+  const illustration = currentSlide.icon === 'report'
+    ? require('../../assets/onboarding/undraw_motion-alert_pr1a.svg')
+    : currentSlide.icon === 'emergency'
+      ? require('../../assets/onboarding/undraw_phone-call_ov3z.svg')
+      : require('../../assets/onboarding/undraw_smartwatch-map_3u18.svg');
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <View style={styles.content}>
         <TouchableOpacity style={styles.skipBtn} onPress={onFinish}>
           <Text style={styles.skipText}>Skip</Text>
@@ -46,7 +52,7 @@ export default function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
 
         <View style={styles.slideContainer}>
           <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>{currentSlide.icon}</Text>
+            <Image source={illustration} style={styles.illustration} resizeMode="contain" />
           </View>
 
           <Text style={styles.title}>{currentSlide.title}</Text>
@@ -77,7 +83,7 @@ export default function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   content: {
     flex: 1,
@@ -89,7 +95,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   skipText: {
-    color: '#94a3b8',
+    color: '#667085',
     fontWeight: '700',
     fontSize: 14,
   },
@@ -98,15 +104,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   iconCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    width: 80,
+    height: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 32,
-    borderWidth: 2,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
+    marginBottom: 30,
+  },
+  illustration: {
+    width: 160,
+    height: 130,
   },
   iconText: {
     fontSize: 52,
@@ -114,13 +120,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#ffffff',
+    color: '#172b4d',
     textAlign: 'center',
     marginBottom: 12,
   },
   description: {
     fontSize: 14,
-    color: '#cbd5e1',
+    color: '#667085',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -133,20 +139,20 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#334155',
+    backgroundColor: '#d0d5dd',
   },
   activeIndicator: {
     width: 24,
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#0f6cbd',
   },
   nextBtn: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#0f6cbd',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
   },
   nextBtnText: {
-    color: '#0f172a',
+    color: '#ffffff',
     fontWeight: '900',
     fontSize: 16,
   },

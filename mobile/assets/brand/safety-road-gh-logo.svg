@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="180" viewBox="0 0 620 180" fill="none">
+  <title>Safety Road GH</title>
+  <rect width="620" height="180" rx="28" fill="white"/>
+  <g transform="translate(24 25)">
+    <rect width="130" height="130" rx="34" fill="#0F6CBD"/>
+    <path d="M23 107C38 78 48 49 65 49C82 49 92 78 107 107" stroke="white" stroke-width="12" stroke-linecap="round"/>
+    <path d="M65 68V83M65 96V108" stroke="#D9EAF7" stroke-width="7" stroke-linecap="round"/>
+    <path d="M19 29H111" stroke="#D92D20" stroke-width="7"/>
+    <path d="M19 39H111" stroke="#F5B335" stroke-width="7"/>
+    <path d="M19 49H111" stroke="#25834B" stroke-width="7"/>
+  </g>
+  <text x="182" y="91" fill="#172B4D" font-family="Arial, sans-serif" font-size="48" font-weight="700" letter-spacing="-1.5">Safety Road</text>
+  <text x="185" y="132" fill="#0F6CBD" font-family="Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="8">GH</text>
+</svg>

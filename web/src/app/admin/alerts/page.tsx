@@ -1,7 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { BellRing, Plus, AlertTriangle, CheckCircle, ShieldAlert, MapPin } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BellRing, MapPin, Plus } from 'lucide-react';
+import { Button, DrawerBody, DrawerFooter, DrawerHeader, DrawerHeaderTitle, Field, Input, OverlayDrawer, Textarea } from '@fluentui/react-components';
+import { Dismiss24Regular } from '@fluentui/react-icons';
 
 interface RoadAlertItem {
   id: string;
@@ -19,8 +21,6 @@ export default function AdminAlertsPage() {
   const [alerts, setAlerts] = useState<RoadAlertItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-
-  // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState('HIGH');
@@ -32,7 +32,21 @@ export default function AdminAlertsPage() {
     try {
       const res = await fetch('/api/v1/alerts');
       const data = await res.json();
-      if (data.alerts) setAlerts(data.alerts);
+      if (Array.isArray(data.alerts)) {
+        setAlerts(data.alerts.map((item: Record<string, unknown>) => ({
+          id: String(item.id ?? ''),
+          title: String(item.title ?? 'Untitled alert'),
+          description: String(item.description ?? ''),
+          severity: String(item.severity ?? 'MEDIUM'),
+          alertType: String(item.alertType ?? 'ROAD ALERT'),
+          locationName: typeof item.locationName === 'string' ? item.locationName : (typeof item.location === 'string' ? item.location : undefined),
+          isActive: Boolean(item.isActive ?? item.active),
+          createdAt: String(item.createdAt ?? item.created_at ?? new Date().toISOString()),
+          createdBy: item.createdBy && typeof item.createdBy === 'object' && 'name' in item.createdBy
+            ? { name: String((item.createdBy as { name?: unknown }).name ?? 'MTTD Command') }
+            : { name: 'MTTD Command' },
+        })));
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,7 +66,7 @@ export default function AdminAlertsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : '',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           title,
@@ -79,26 +93,19 @@ export default function AdminAlertsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl font-extrabold text-white">Broadcast Road Alerts</h1>
-          <p className="text-slate-400 text-sm">Create and push emergency traffic, weather & accident alerts to mobile users</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Broadcast road alerts</h1>
+          <p className="mt-1 text-sm text-slate-600">Create and push emergency traffic, weather, and accident alerts to mobile users.</p>
         </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center space-x-2 bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-amber-500/20 transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Alert Broadcast</span>
-        </button>
+        <Button appearance="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setShowModal(true)}>New alert broadcast</Button>
       </div>
 
-      {/* Alerts List */}
       {loading ? (
-        <div className="p-12 text-center text-slate-500">Loading active road alerts...</div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500">Loading active road alerts...</div>
       ) : alerts.length === 0 ? (
-        <div className="p-12 bg-slate-950 border border-slate-800 rounded-xl text-center text-slate-400">
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500">
           No active road alerts broadcasted.
         </div>
       ) : (
@@ -106,150 +113,70 @@ export default function AdminAlertsPage() {
           {alerts.map((alert) => (
             <div
               key={alert.id}
-              className="bg-slate-950 border border-slate-800 rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+              className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-start"
             >
-              <div className="flex items-start space-x-4">
-                <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                    alert.severity === 'CRITICAL' || alert.severity === 'HIGH'
-                      ? 'bg-red-500/10 border border-red-500/30 text-red-400'
-                      : 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
-                  }`}
-                >
-                  <BellRing className="w-6 h-6" />
+              <div className="flex items-start gap-4">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${
+                  alert.severity === 'CRITICAL' || alert.severity === 'HIGH'
+                    ? 'border-red-200 bg-red-50 text-red-600'
+                    : 'border-amber-200 bg-amber-50 text-amber-600'
+                }`}>
+                  <BellRing className="h-5 w-5" />
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                        alert.severity === 'CRITICAL'
-                          ? 'bg-red-600 text-white'
-                          : alert.severity === 'HIGH'
-                          ? 'bg-orange-500 text-slate-950'
-                          : 'bg-amber-500 text-slate-950'
-                      }`}
-                    >
-                      {alert.severity} SEVERITY
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${
+                      alert.severity === 'CRITICAL'
+                        ? 'bg-red-600 text-white'
+                        : alert.severity === 'HIGH'
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {alert.severity} severity
                     </span>
-                    <span className="text-xs font-bold text-slate-400">[{alert.alertType}]</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">[{alert.alertType}]</span>
                   </div>
 
-                  <h3 className="font-bold text-white text-base">{alert.title}</h3>
-                  <p className="text-xs text-slate-300 max-w-3xl">{alert.description}</p>
+                  <h3 className="text-base font-semibold text-slate-900">{alert.title}</h3>
+                  <p className="max-w-3xl text-sm text-slate-600">{alert.description}</p>
 
                   {alert.locationName && (
-                    <div className="flex items-center space-x-1 text-xs text-amber-400 pt-1">
-                      <MapPin className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-2 text-xs text-amber-700">
+                      <MapPin className="h-3.5 w-3.5" />
                       <span>{alert.locationName}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="text-right text-xs text-slate-500 shrink-0">
-                <p>Issued by {alert.createdBy.name}</p>
-                <p>{new Date(alert.createdAt).toLocaleString()}</p>
+              <div className="shrink-0 text-right text-xs text-slate-500">
+                <p className="font-medium text-slate-700">Issued by {alert.createdBy.name}</p>
+                <p className="mt-1">{new Date(alert.createdAt).toLocaleString()}</p>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* New Alert Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-lg font-bold text-white">Broadcast New Emergency Alert</h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white">✕</button>
+      <OverlayDrawer position="end" open={showModal} onOpenChange={(_, data) => setShowModal(data.open)}>
+        <DrawerHeader>
+          <DrawerHeaderTitle action={<Button appearance="subtle" aria-label="Close alert sheet" icon={<Dismiss24Regular />} onClick={() => setShowModal(false)} />}>Broadcast alert</DrawerHeaderTitle>
+        </DrawerHeader>
+        <form onSubmit={handleCreateAlert} className="flex min-h-0 flex-1 flex-col">
+          <DrawerBody className="space-y-5">
+            <p className="text-sm leading-6 text-slate-600">Send a clear, time-sensitive update to road users and responders.</p>
+            <Field label="Alert title" required><Input value={title} onChange={(_, data) => setTitle(data.value)} placeholder="Heavy flooding on Weija-Kasoa Highway" /></Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Alert category"><select value={alertType} onChange={(e) => setAlertType(e.target.value)} className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-sm"><option value="TRAFFIC">Traffic congestion</option><option value="ACCIDENT">Major accident</option><option value="FLOODING">Flooding / rain hazard</option><option value="HAZARD">Road obstruction</option></select></Field>
+              <Field label="Severity"><select value={severity} onChange={(e) => setSeverity(e.target.value)} className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-sm"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical emergency</option></select></Field>
             </div>
-
-            <form onSubmit={handleCreateAlert} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Alert Title</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                  placeholder="e.g. Heavy Flooding on Weija-Kasoa Highway"
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Alert Category</label>
-                  <select
-                    value={alertType}
-                    onChange={(e) => setAlertType(e.target.value)}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-                  >
-                    <option value="TRAFFIC">Traffic Congestion</option>
-                    <option value="ACCIDENT">Major Accident</option>
-                    <option value="FLOODING">Flooding / Rain hazard</option>
-                    <option value="HAZARD">Road Obstruction</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Severity Level</label>
-                  <select
-                    value={severity}
-                    onChange={(e) => setSeverity(e.target.value)}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="CRITICAL">Critical Emergency</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Affected Location / Highway</label>
-                <input
-                  type="text"
-                  value={locationName}
-                  onChange={(e) => setLocationName(e.target.value)}
-                  placeholder="e.g. Accra-Tema Motorway, Ashaiman stretch"
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Description & Driver Advice</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                  rows={3}
-                  placeholder="Provide clear traffic advice and detour routes..."
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-amber-600 text-white rounded-lg text-xs font-bold"
-                >
-                  Broadcast Alert Now
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <Field label="Affected location"><Input value={locationName} onChange={(_, data) => setLocationName(data.value)} placeholder="Accra-Tema Motorway" /></Field>
+            <Field label="Description" required><Textarea value={description} onChange={(_, data) => setDescription(data.value)} resize="vertical" rows={5} placeholder="Provide traffic advice and detour routes..." /></Field>
+          </DrawerBody>
+          <DrawerFooter><Button appearance="secondary" onClick={() => setShowModal(false)}>Cancel</Button><Button appearance="primary" type="submit">Broadcast alert</Button></DrawerFooter>
+        </form>
+      </OverlayDrawer>
     </div>
   );
 }

@@ -10,12 +10,14 @@ import {
   Alert,
 } from 'react-native';
 import { getUserData, removeAuthToken } from '../services/api';
+import Icon from '../components/Icon';
 
 interface ProfileScreenProps {
   onLogout: () => void;
+  onNavigate: (screen: 'EDIT_PROFILE' | 'CHANGE_PASSWORD' | 'SETTINGS' | 'HELP_SUPPORT' | 'ABOUT' | 'PRIVACY_POLICY' | 'TERMS_CONDITIONS') => void;
 }
 
-export default function ProfileScreen({ onLogout }: ProfileScreenProps) {
+export default function ProfileScreen({ onLogout, onNavigate }: ProfileScreenProps) {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -43,44 +45,34 @@ export default function ProfileScreen({ onLogout }: ProfileScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.headerTitle}>Account & Settings</Text>
+        <Text style={styles.headerTitle}>Account</Text>
 
         {/* User Card */}
         <View style={styles.userCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'U'}</Text>
-          </View>
-
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{user?.name || 'Citizen User'}</Text>
             <Text style={styles.userEmail}>{user?.email || 'user@safetyroad.gov.gh'}</Text>
-            <Text style={styles.userRole}>ROLE: {user?.role || 'CITIZEN'}</Text>
           </View>
         </View>
 
-        {/* System Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Help & System Information</Text>
-
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>About Safety Road GH</Text>
-            <Text style={styles.infoDesc}>
-              Safety Road GH is a mobile road-safety and accident-reporting system for Ghana. Designed to allow authenticated citizens to report road accidents/hazards with GPS coordinates and photographic evidence to the National Road Safety Authority and MTTD.
-            </Text>
-          </View>
-
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Privacy Policy & Terms</Text>
-            <Text style={styles.infoDesc}>
-              All submitted GPS coordinates and photographic evidence are transmitted securely over SSL to our encrypted backend server and stored for official verification and emergency dispatch.
-            </Text>
-          </View>
-        </View>
+        <MenuSection title="Account">
+          <MenuRow icon="profile" label="Edit profile" onPress={() => onNavigate('EDIT_PROFILE')} />
+          <MenuRow icon="shield" label="Change password" onPress={() => onNavigate('CHANGE_PASSWORD')} />
+        </MenuSection>
+        <MenuSection title="App">
+          <MenuRow icon="settings" label="Settings" onPress={() => onNavigate('SETTINGS')} />
+          <MenuRow icon="help" label="Help & support" onPress={() => onNavigate('HELP_SUPPORT')} />
+        </MenuSection>
+        <MenuSection title="About">
+          <MenuRow icon="info" label="About Safety Road GH" onPress={() => onNavigate('ABOUT')} />
+          <MenuRow icon="shield" label="Privacy policy" onPress={() => onNavigate('PRIVACY_POLICY')} />
+          <MenuRow icon="reports" label="Terms & conditions" onPress={() => onNavigate('TERMS_CONDITIONS')} />
+        </MenuSection>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Sign Out of Account</Text>
+          <Icon name="logout" size={17} color="#b42318" /><Text style={styles.logoutText}>Sign out</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -90,7 +82,7 @@ export default function ProfileScreen({ onLogout }: ProfileScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
     padding: 20,
@@ -98,51 +90,25 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#ffffff',
+    color: '#172b4d',
     marginBottom: 20,
   },
   userCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 18,
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#f59e0b',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#0f172a',
+    paddingVertical: 4,
+    marginBottom: 28,
   },
   userInfo: {
     flex: 1,
   },
   userName: {
-    color: '#ffffff',
-    fontSize: 18,
+    color: '#172b4d',
+    fontSize: 24,
     fontWeight: '800',
   },
   userEmail: {
-    color: '#94a3b8',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  userRole: {
-    color: '#f59e0b',
-    fontSize: 10,
-    fontWeight: '900',
-    marginTop: 4,
+    color: '#667085',
+    fontSize: 14,
+    marginTop: 5,
   },
   section: {
     marginBottom: 24,
@@ -150,41 +116,88 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#94a3b8',
+    color: '#667085',
     textTransform: 'uppercase',
     marginBottom: 10,
     letterSpacing: 0.5,
   },
   infoCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e4e7ec',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   infoTitle: {
-    color: '#ffffff',
+    color: '#172b4d',
     fontWeight: '800',
     fontSize: 14,
     marginBottom: 6,
   },
   infoDesc: {
-    color: '#cbd5e1',
+    color: '#667085',
     fontSize: 12,
     lineHeight: 18,
   },
-  logoutBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
-    paddingVertical: 14,
+  menuCard: {
+    backgroundColor: '#ffffff',
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e4e7ec',
+    overflow: 'hidden',
+  },
+  menuRow: {
+    minHeight: 56,
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f2f5',
+  },
+  menuLabel: {
+    flex: 1,
+    color: '#172b4d',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 9,
+    backgroundColor: '#fff1f0',
+    borderWidth: 1,
+    borderColor: '#fecdca',
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 4,
   },
   logoutText: {
-    color: '#ef4444',
+    color: '#b42318',
     fontWeight: '900',
     fontSize: 14,
   },
+  rowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#eaf3fb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  rowContent: {
+    flex: 1,
+  },
 });
+
+function MenuSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text><View style={styles.menuCard}>{children}</View></View>;
+}
+
+function MenuRow({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+  return <TouchableOpacity style={styles.menuRow} onPress={onPress} activeOpacity={0.7}><View style={styles.rowIcon}><Icon name={icon} size={17} color="#667085" /></View><Text style={styles.menuLabel}>{label}</Text><Icon name="chevron" size={17} color="#98a2b3" /></TouchableOpacity>;
+}

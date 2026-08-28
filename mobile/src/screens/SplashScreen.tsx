@@ -1,13 +1,19 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
-import Icon from '../components/Icon';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, View, SafeAreaView, StatusBar, Image, Animated, ActivityIndicator } from 'react-native';
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
+  const scale = useRef(new Animated.Value(0.86)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 420, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 7, tension: 55, useNativeDriver: true }),
+    ]).start();
     const timer = setTimeout(() => {
       onFinish();
     }, 2000);
@@ -16,18 +22,12 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <View style={styles.content}>
-        <View style={styles.logoBadge}>
-          <Icon name="shield" size={44} color="#f59e0b" />
-        </View>
-        <Text style={styles.title}>SAFETY ROAD GH</Text>
-        <Text style={styles.subtitle}>Ghana National Road Accident & Hazard Network</Text>
-
-        <View style={styles.loaderBox}>
-          <ActivityIndicator size="large" color="#f59e0b" />
-          <Text style={styles.loadingText}>Initializing emergency services...</Text>
-        </View>
+        <Animated.View style={{ opacity, transform: [{ scale }] }}>
+          <Image source={require('../../assets/brand/safety-road-logo.png')} style={styles.logo} resizeMode="contain" />
+        </Animated.View>
+        <View style={styles.loader}><ActivityIndicator size="small" color="#0f6cbd" /></View>
       </View>
     </SafeAreaView>
   );
@@ -36,7 +36,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   content: {
     flex: 1,
@@ -44,38 +44,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
-  logoBadge: {
-    width: 90,
-    height: 90,
-    borderRadius: 28,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderWidth: 2,
-    borderColor: '#f59e0b',
-    justifyContent: 'center',
+  logo: {
+    width: 190,
+    height: 190,
+    // The supplied reference image has a large transparent/white canvas on its right.
+    marginLeft: -42,
+  },
+  loader: {
+    marginTop: 22,
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: 2,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#94a3b8',
-    textAlign: 'center',
-    marginTop: 6,
-    maxWidth: 280,
-  },
-  loaderBox: {
-    marginTop: 60,
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: 12,
-    marginTop: 12,
-    fontWeight: '600',
   },
 });

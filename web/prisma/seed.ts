@@ -1,4 +1,4 @@
-import { PrismaClient, Role, AlertSeverity } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 
 const prisma = new PrismaClient();
@@ -21,7 +21,7 @@ async function main() {
       email: 'admin@safetyroad.gov.gh',
       password_hash: adminPassword,
       phone: '+233240000001',
-      role: Role.ADMIN,
+      role: 'ADMIN',
       is_verified: true,
     },
   });
@@ -36,7 +36,7 @@ async function main() {
       email: 'kwame.mensah@gmail.com',
       password_hash: citizenPassword,
       phone: '+233241234567',
-      role: Role.CITIZEN,
+      role: 'CITIZEN',
       is_verified: true,
     },
   });
@@ -153,7 +153,7 @@ async function main() {
       location: 'Ashaiman Flyover, Tema Motorway',
       latitude: 5.65,
       longitude: -0.05,
-      severity: AlertSeverity.HIGH,
+      severity: 'HIGH',
       active: true,
     },
   });

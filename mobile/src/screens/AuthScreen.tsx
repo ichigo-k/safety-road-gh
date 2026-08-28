@@ -10,8 +10,10 @@ import {
   Alert,
   SafeAreaView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { apiFetch, saveAuthToken, saveUserData } from '../services/api';
+import Icon from '../components/Icon';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: any) => void;
@@ -24,8 +26,11 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
   const [name, setName] = useState('Kwame Mensah');
   const [phone, setPhone] = useState('+233241234567');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async () => {
+    if (loading) return;
+    setErrorMessage('');
     if (!email || !password || (!isLogin && !name)) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
@@ -44,10 +49,9 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
       await saveAuthToken(res.token);
       await saveUserData(res.user);
 
-      Alert.alert('Success', isLogin ? 'Welcome back to Safety Road GH!' : 'Registration successful!');
       onLoginSuccess(res.user);
     } catch (err: any) {
-      Alert.alert('Authentication Failed', err.message || 'Check your credentials or network');
+      setErrorMessage(err.message || 'Check your credentials or network');
     } finally {
       setLoading(false);
     }
@@ -55,14 +59,12 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Branding Header */}
         <View style={styles.header}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>🇬🇭</Text>
-          </View>
-          <Text style={styles.title}>SAFETY ROAD GH</Text>
+          <Image source={require('../../assets/onboarding/undraw_secure-login_m11a.svg')} style={styles.illustration} resizeMode="contain" />
+          <Text style={styles.title}>{isLogin ? 'Welcome back' : 'Create your account'}</Text>
           <Text style={styles.subtitle}>
             Ghana Road Accident & Hazard Reporting Mobile Network
           </Text>
@@ -137,7 +139,9 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
             />
           </View>
 
-          <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
+          {errorMessage ? <View style={styles.errorBox}><Icon name="alerts" size={16} color="#d92d20" /><Text style={styles.errorText}>{errorMessage}</Text></View> : null}
+
+          <TouchableOpacity accessibilityRole="button" activeOpacity={0.8} style={styles.button} onPress={() => void handleSubmit()} disabled={loading}>
             {loading ? (
               <ActivityIndicator color="#0f172a" />
             ) : (
@@ -153,7 +157,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
     padding: 24,
@@ -164,42 +168,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  illustration: {
+    width: 190,
+    height: 120,
     marginBottom: 12,
-  },
-  logoText: {
-    fontSize: 32,
   },
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: 1,
+    color: '#172b4d',
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: '#667085',
     textAlign: 'center',
     marginTop: 4,
   },
   card: {
-    backgroundColor: '#1e293b',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: '#ffffff',
+    padding: 4,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#f6f8fb',
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
@@ -211,7 +203,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#0f6cbd',
   },
   tabText: {
     fontSize: 14,
@@ -219,7 +211,7 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
   },
   activeTabText: {
-    color: '#0f172a',
+    color: '#ffffff',
   },
   inputGroup: {
     marginBottom: 16,
@@ -227,30 +219,48 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#cbd5e1',
+    color: '#667085',
     marginBottom: 6,
     textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#d0d5dd',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#ffffff',
+    color: '#172b4d',
     fontSize: 15,
   },
   button: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#0f6cbd',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonText: {
-    color: '#0f172a',
+    color: '#ffffff',
     fontWeight: '900',
     fontSize: 15,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff1f0',
+    borderWidth: 1,
+    borderColor: '#fecdca',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  errorText: {
+    flex: 1,
+    color: '#b42318',
+    fontSize: 12,
+    lineHeight: 17,
   },
 });

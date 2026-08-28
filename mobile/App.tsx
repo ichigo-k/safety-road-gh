@@ -82,7 +82,7 @@ export default function App() {
       const userData = await getUserData();
       if (userData) setUser(userData);
       if (token) {
-        setScreen('HOME');
+        setScreen('MAP');
       }
     } catch (e) {}
   };
@@ -97,7 +97,7 @@ export default function App() {
 
   const handleLoginSuccess = (userData: any) => {
     setUser(userData);
-    setScreen('HOME');
+    setScreen('MAP');
   };
 
   const handleLogout = () => {
@@ -204,7 +204,7 @@ export default function App() {
 
         {screen === 'NOTIFICATIONS' && <NotificationsScreen />}
 
-        {screen === 'PROFILE' && <ProfileScreen onLogout={handleLogout} />}
+        {screen === 'PROFILE' && <ProfileScreen onLogout={handleLogout} onNavigate={(target) => setScreen(target)} />}
 
         {screen === 'EDIT_PROFILE' && (
           <EditProfileScreen user={user} onSave={() => setScreen('PROFILE')} onBack={() => setScreen('PROFILE')} />
@@ -245,7 +245,7 @@ export default function App() {
             <Icon
               name="home"
               size={18}
-              color={(screen === 'HOME' || screen === 'REPORT' || screen === 'EMERGENCY') ? '#f59e0b' : '#94a3b8'}
+              color={(screen === 'HOME' || screen === 'REPORT' || screen === 'EMERGENCY') ? '#0f6cbd' : '#98a2b3'}
             />
             <Text style={[styles.tabLabel, (screen === 'HOME' || screen === 'REPORT' || screen === 'EMERGENCY') && styles.activeTabLabel]}>Home</Text>
           </TouchableOpacity>
@@ -254,7 +254,7 @@ export default function App() {
             style={[styles.tabItem, screen === 'MAP' && styles.activeTabItem]}
             onPress={() => setScreen('MAP')}
           >
-            <Icon name="map" size={18} color={screen === 'MAP' ? '#f59e0b' : '#94a3b8'} />
+            <Icon name="map" size={18} color={screen === 'MAP' ? '#0f6cbd' : '#98a2b3'} />
             <Text style={[styles.tabLabel, screen === 'MAP' && styles.activeTabLabel]}>Map</Text>
           </TouchableOpacity>
 
@@ -262,7 +262,7 @@ export default function App() {
             style={[styles.tabItem, screen === 'MY_REPORTS' && styles.activeTabItem]}
             onPress={() => setScreen('MY_REPORTS')}
           >
-            <Icon name="reports" size={18} color={screen === 'MY_REPORTS' ? '#f59e0b' : '#94a3b8'} />
+            <Icon name="reports" size={18} color={screen === 'MY_REPORTS' ? '#0f6cbd' : '#98a2b3'} />
             <Text style={[styles.tabLabel, screen === 'MY_REPORTS' && styles.activeTabLabel]}>Reports</Text>
           </TouchableOpacity>
 
@@ -270,7 +270,7 @@ export default function App() {
             style={[styles.tabItem, screen === 'ROAD_ALERTS' && styles.activeTabItem]}
             onPress={() => setScreen('ROAD_ALERTS')}
           >
-            <Icon name="alerts" size={18} color={screen === 'ROAD_ALERTS' ? '#f59e0b' : '#94a3b8'} />
+            <Icon name="alerts" size={18} color={screen === 'ROAD_ALERTS' ? '#d92d20' : '#98a2b3'} />
             <Text style={[styles.tabLabel, screen === 'ROAD_ALERTS' && styles.activeTabLabel]}>Alerts</Text>
           </TouchableOpacity>
 
@@ -278,7 +278,7 @@ export default function App() {
             style={[styles.tabItem, screen === 'PROFILE' && styles.activeTabItem]}
             onPress={() => setScreen('PROFILE')}
           >
-            <Icon name="profile" size={18} color={screen === 'PROFILE' ? '#f59e0b' : '#94a3b8'} />
+            <Icon name="profile" size={18} color={screen === 'PROFILE' ? '#0f6cbd' : '#98a2b3'} />
             <Text style={[styles.tabLabel, screen === 'PROFILE' && styles.activeTabLabel]}>Profile</Text>
           </TouchableOpacity>
         </View>
@@ -290,35 +290,42 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   content: {
     flex: 1,
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#1e293b',
-    borderTopWidth: 1,
-    borderTopColor: '#334155',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    backgroundColor: '#ffffff',
+    borderRadius: 28,
+    marginHorizontal: 14,
+    marginBottom: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    shadowColor: '#172b4d',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 5,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 22,
+    gap: 2,
   },
   activeTabItem: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: '#eaf3fb',
   },
   tabLabel: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#94a3b8',
+    fontWeight: '600',
+    color: '#667085',
     marginTop: 2,
   },
   activeTabLabel: {
-    color: '#f59e0b',
+    color: '#0f6cbd',
   },
 });

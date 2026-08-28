@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Shield, User, Car, Bike, Navigation } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BookOpen, CheckCircle2, Plus, Shield } from 'lucide-react';
 
 interface TipItem {
   id: string;
@@ -11,6 +11,13 @@ interface TipItem {
   icon?: string;
   createdAt: string;
 }
+
+const audienceOptions = [
+  { value: 'DRIVER', label: 'Drivers' },
+  { value: 'MOTORCYCLIST', label: 'Motorcyclists' },
+  { value: 'PEDESTRIAN', label: 'Pedestrians' },
+  { value: 'PASSENGER', label: 'Passengers' },
+];
 
 export default function AdminSafetyTipsPage() {
   const [tips, setTips] = useState<TipItem[]>([]);
@@ -41,12 +48,13 @@ export default function AdminSafetyTipsPage() {
   const handleCreateTip = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem('adminToken');
+
     try {
       const res = await fetch('/api/v1/safety-tips', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : '',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ category, title, content }),
       });
@@ -54,6 +62,7 @@ export default function AdminSafetyTipsPage() {
       if (res.ok) {
         setShowModal(false);
         setTitle('');
+        setCategory('DRIVER');
         setContent('');
         fetchTips();
       } else {
@@ -66,104 +75,125 @@ export default function AdminSafetyTipsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl font-extrabold text-white">Road Safety Tips Management</h1>
-          <p className="text-slate-400 text-sm">Publish driver, motorcyclist, pedestrian and passenger educational guides</p>
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-700">
+            <Shield className="h-4 w-4" />
+            <span>Public education</span>
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Road safety tips</h1>
+          <p className="mt-1 text-sm text-slate-600">Publish targeted education for drivers, riders, and pedestrians across Ghana.</p>
         </div>
 
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-400 text-white px-4 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-blue-500/20 transition"
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
         >
-          <Plus className="w-4 h-4" />
-          <span>New Safety Tip</span>
+          <Plus className="h-4 w-4" />
+          <span>New safety tip</span>
         </button>
       </div>
 
       {loading ? (
-        <div className="p-12 text-center text-slate-500">Loading road safety tips...</div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500">Loading road safety tips...</div>
+      ) : tips.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500">No safety tips published yet.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {tips.map((tip) => (
-            <div key={tip.id} className="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3 shadow-lg">
-              <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                  {tip.category}
-                </span>
-                <span className="text-xs text-slate-500">
-                  {new Date(tip.createdAt).toLocaleDateString()}
-                </span>
+            <article key={tip.id} className="flex h-full flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700">
+                    {tip.category}
+                  </span>
+                  <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                    {new Date(tip.createdAt).toLocaleDateString('en-GB')}
+                  </span>
+                </div>
+
+                <h3 className="mt-4 text-lg font-semibold text-slate-900">{tip.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{tip.content}</p>
               </div>
 
-              <h3 className="font-bold text-white text-base">{tip.title}</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">{tip.content}</p>
-            </div>
+              <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-4 text-xs text-slate-500">
+                <span className="inline-flex items-center gap-1.5">
+                  <BookOpen className="h-3.5 w-3.5 text-slate-400" />
+                  Safety guide
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Published
+                </span>
+              </div>
+            </article>
           ))}
         </div>
       )}
 
-      {/* Add Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-lg font-bold text-white">Create Safety Tip Article</h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-slate-700" />
+                <h2 className="text-lg font-semibold text-slate-900">Create safety tip</h2>
+              </div>
+              <button type="button" onClick={() => setShowModal(false)} className="text-slate-500 hover:text-slate-900">?</button>
             </div>
 
-            <form onSubmit={handleCreateTip} className="space-y-4">
+            <form onSubmit={handleCreateTip} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Target Audience Category</label>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Audience</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:bg-white"
                 >
-                  <option value="DRIVER">Drivers (Commercial & Private)</option>
-                  <option value="MOTORCYCLIST">Motorcyclists & Delivery Riders</option>
+                  <option value="DRIVER">Drivers</option>
+                  <option value="MOTORCYCLIST">Motorcyclists</option>
                   <option value="PEDESTRIAN">Pedestrians</option>
                   <option value="PASSENGER">Passengers</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Article Title</label>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Title</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  placeholder="e.g. Defensive Driving in Harmattan Fog"
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
+                  placeholder="e.g. Defensive driving during heavy rain"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Educational Content & Guidance</label>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Content</label>
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   required
                   rows={4}
-                  placeholder="Detailed safety instructions..."
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
+                  placeholder="Add actionable advice for this audience..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:bg-white"
                 />
               </div>
 
-              <div className="flex justify-end space-x-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold"
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
                 >
-                  Publish Article
+                  Publish tip
                 </button>
               </div>
             </form>

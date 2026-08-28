@@ -5,9 +5,9 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#0f172a",
+      "backgroundColor": "#ffffff",
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain"
     },
@@ -22,7 +22,7 @@
     "android": {
       "package": "com.safetyroad.gh",
       "adaptiveIcon": {
-        "backgroundColor": "#0f172a",
+        "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "permissions": [
@@ -37,17 +37,20 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "description": "Ghana National Road Accident & Hazard Reporting Network — Instant Emergency Help & Live Hotspot Radar",
-      "themeColor": "#0f172a",
-      "backgroundColor": "#0f172a",
+      "themeColor": "#ffffff",
+      "backgroundColor": "#ffffff",
       "meta": {
         "viewport": "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
         "apple-mobile-web-app-capable": "yes",
-        "apple-mobile-web-app-status-bar-style": "black-translucent",
+        "apple-mobile-web-app-status-bar-style": "default",
         "apple-mobile-web-app-title": "Safety Road GH",
-        "theme-color": "#0f172a"
+        "theme-color": "#ffffff"
       }
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

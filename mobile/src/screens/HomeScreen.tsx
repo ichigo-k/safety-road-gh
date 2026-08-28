@@ -52,27 +52,28 @@ export default function HomeScreen({ onNavigateToReport, onNavigateToEmergency }
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f59e0b" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0f6cbd" />}
       >
         {/* Header Bar */}
         <View style={styles.header}>
           <View>
             <Text style={styles.headerSubtitle}>GHANA ROAD SAFETY</Text>
-            <Text style={styles.headerTitle}>Incident & Alert Center</Text>
+            <Text style={styles.headerTitle}>Stay safe on the road</Text>
           </View>
 
-          <TouchableOpacity style={styles.sosButton} onPress={() => makeCall('193')}>
-            <Text style={styles.sosText}>SOS 193</Text>
+          <TouchableOpacity activeOpacity={0.78} style={styles.sosButton} onPress={() => makeCall('193')}>
+            <Icon name="phone" size={15} color="#ffffff" /><Text style={styles.sosText}>SOS</Text>
           </TouchableOpacity>
         </View>
 
         {/* Action Cards */}
         <View style={styles.actionRow}>
           <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: '#7f1d1d', borderColor: '#b91c1c' }]}
+            activeOpacity={0.82}
+            style={[styles.actionCard, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
             onPress={() => onNavigateToReport('ACCIDENT')}
           >
             <View style={styles.iconBox}>
@@ -83,11 +84,12 @@ export default function HomeScreen({ onNavigateToReport, onNavigateToEmergency }
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: '#78350f', borderColor: '#d97706' }]}
-            onNavigateToReport={() => onNavigateToReport('HAZARD')}
+            activeOpacity={0.82}
+            style={[styles.actionCard, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
+            onPress={() => onNavigateToReport('HAZARD')}
           >
             <View style={styles.iconBox}>
-              <Icon name="hazard" size={28} color="#f59e0b" />
+              <Icon name="hazard" size={28} color="#d92d20" />
             </View>
             <Text style={styles.actionTitle}>Report Hazard</Text>
             <Text style={styles.actionDesc}>Pothole, flooding, broken traffic light</Text>
@@ -98,15 +100,15 @@ export default function HomeScreen({ onNavigateToReport, onNavigateToEmergency }
         <View style={styles.quickDialContainer}>
           <Text style={styles.sectionTitle}>Emergency Direct Dial (Ghana)</Text>
           <View style={styles.dialRow}>
-            <TouchableOpacity style={styles.dialChip} onPress={() => makeCall('193')}>
+            <TouchableOpacity activeOpacity={0.78} style={styles.dialChip} onPress={() => makeCall('193')}>
               <Icon name="ambulance" size={16} color="#ef4444" />
               <Text style={styles.dialLabel}>Ambulance 193</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.dialChip} onPress={() => makeCall('18555')}>
+            <TouchableOpacity activeOpacity={0.78} style={styles.dialChip} onPress={() => makeCall('18555')}>
               <Icon name="police" size={16} color="#3b82f6" />
               <Text style={styles.dialLabel}>Police 18555</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.dialChip} onPress={() => makeCall('192')}>
+            <TouchableOpacity activeOpacity={0.78} style={styles.dialChip} onPress={() => makeCall('192')}>
               <Icon name="fire" size={16} color="#f97316" />
               <Text style={styles.dialLabel}>Fire 192</Text>
             </TouchableOpacity>
@@ -173,10 +175,11 @@ export default function HomeScreen({ onNavigateToReport, onNavigateToEmergency }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
-    padding: 18,
+    padding: 20,
+    paddingBottom: 28,
   },
   header: {
     flexDirection: 'row',
@@ -187,19 +190,22 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#f59e0b',
+    color: '#0f6cbd',
     letterSpacing: 1.5,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#172b4d',
   },
   sosButton: {
-    backgroundColor: '#ef4444',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: '#d92d20',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   sosText: {
     color: '#ffffff',
@@ -213,30 +219,37 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     flex: 1,
-    padding: 16,
-    borderRadius: 16,
+    padding: 15,
+    borderRadius: 12,
     borderWidth: 1,
   },
   iconBox: {
-    marginBottom: 8,
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+    marginBottom: 12,
   },
   actionTitle: {
-    color: '#ffffff',
+    color: '#172b4d',
     fontWeight: '900',
-    fontSize: 16,
+    fontSize: 15,
     marginBottom: 4,
   },
   actionDesc: {
-    color: '#cbd5e1',
-    fontSize: 11,
+    color: '#667085',
+    fontSize: 12,
+    lineHeight: 17,
   },
   quickDialContainer: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 15,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e4e7ec',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -247,15 +260,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: '#172b4d',
+    letterSpacing: 0,
   },
   badgeCount: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#f59e0b',
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    color: '#0f6cbd',
+    backgroundColor: 'rgba(15, 108, 189, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -267,37 +279,40 @@ const styles = StyleSheet.create({
   },
   dialChip: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#F8FAFC',
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e4e7ec',
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 4,
   },
   dialLabel: {
-    color: '#ffffff',
+    color: '#172b4d',
     fontWeight: '700',
     fontSize: 11,
   },
   emptyCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#e4e7ec',
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 12,
     marginBottom: 20,
     alignItems: 'center',
   },
   emptyText: {
-    color: '#64748b',
+    color: '#667085',
     fontSize: 13,
   },
   alertCard: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    borderRadius: 14,
+    borderLeftWidth: 4,
+    borderColor: '#fecdca',
+    borderRadius: 12,
     padding: 14,
     marginBottom: 12,
   },
@@ -307,23 +322,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   alertSeverity: {
-    color: '#ef4444',
+    color: '#d92d20',
     fontWeight: '900',
     fontSize: 10,
     textTransform: 'uppercase',
   },
   alertTime: {
-    color: '#94a3b8',
+    color: '#667085',
     fontSize: 11,
   },
   alertTitle: {
-    color: '#ffffff',
+    color: '#172b4d',
     fontWeight: '800',
     fontSize: 15,
     marginBottom: 4,
   },
   alertDesc: {
-    color: '#cbd5e1',
+    color: '#667085',
     fontSize: 12,
     lineHeight: 16,
   },
@@ -334,17 +349,17 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   alertLoc: {
-    color: '#f59e0b',
+    color: '#0f6cbd',
     fontSize: 11,
     fontWeight: '700',
   },
   reportCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e4e7ec',
   },
   reportHeader: {
     flexDirection: 'row',
@@ -359,12 +374,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   typeAccident: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    color: '#fca5a5',
+    backgroundColor: '#FEF2F2',
+    color: '#d92d20',
   },
   typeHazard: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    color: '#fde047',
+    backgroundColor: '#FFF7ED',
+    color: '#c2410c',
   },
   statusBadge: {
     fontSize: 10,
@@ -374,25 +389,25 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusVerified: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    color: '#93c5fd',
+    backgroundColor: '#EFF6FF',
+    color: '#0f6cbd',
   },
   statusPending: {
-    backgroundColor: 'rgba(148, 163, 184, 0.2)',
-    color: '#cbd5e1',
+    backgroundColor: '#F1F5F9',
+    color: '#667085',
   },
   reportTitle: {
-    color: '#ffffff',
+    color: '#172b4d',
     fontWeight: '700',
     fontSize: 14,
     marginBottom: 4,
   },
   reportLoc: {
-    color: '#94a3b8',
+    color: '#667085',
     fontSize: 12,
   },
   reportTime: {
-    color: '#64748b',
+    color: '#98a2b3',
     fontSize: 10,
     marginTop: 6,
   },

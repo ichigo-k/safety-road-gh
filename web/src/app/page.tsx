@@ -1,66 +1,32 @@
-import React from 'react';
 import Link from 'next/link';
+import { ArrowUpRight, ShieldCheck } from 'lucide-react';
 
 export const metadata = {
   title: 'Safety Road GH',
-  description: 'Ghana National Road Accident & Hazard Reporting System',
+  description: 'Safety Road GH administration portal.',
 };
 
 export default function RootHomePage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 font-sans">
-      <main className="flex w-full max-w-lg flex-col items-center text-center">
-        <div className="mb-10 flex items-center gap-3">
-          <svg
-            width="40"
-            height="40"
-            viewBox="0 0 40 40"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="shrink-0"
-          >
-            <rect width="40" height="40" rx="10" fill="#0f172a" />
-            <path
-              d="M20 10L28 26H12L20 10Z"
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeLinejoin="round"
-              fill="none"
-            />
-            <circle cx="20" cy="22" r="1.5" fill="#f59e0b" />
-            <line x1="20" y1="16" x2="20" y2="20" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <span className="text-xl font-semibold tracking-tight text-zinc-900">
-            Safety Road GH
-          </span>
+    <main className="flex min-h-[100dvh] flex-col bg-[#f4f5f2] text-[#17211d]">
+      <header className="flex items-center justify-between px-6 py-6 sm:px-10 lg:px-16">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#17211d] text-[#f4b63f]"><ShieldCheck className="h-5 w-5" strokeWidth={1.8} /></div>
+          <span className="text-sm font-semibold tracking-[0.08em]">SAFETY ROAD GH</span>
         </div>
-
-        <h1 className="mb-3 text-3xl font-semibold leading-tight tracking-tight text-zinc-900">
-          Your application is running.
-        </h1>
-
-        <p className="mb-10 max-w-sm text-base leading-relaxed text-zinc-500">
-          The REST API and admin dashboard are live. Sign in to the command center to manage incident reports, broadcast road alerts, and coordinate emergency response across Ghana.
-        </p>
-
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/admin/login"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white transition-all hover:bg-zinc-700 active:scale-[0.97]"
-            style={{ transitionProperty: 'background-color, transform', transitionDuration: '200ms', transitionTimingFunction: 'cubic-bezier(0.23, 1, 0.32, 1)' }}
-          >
-            Open Admin Dashboard
-          </Link>
-
-          <Link
-            href="/api/v1/reports"
-            className="inline-flex h-11 items-center justify-center rounded-lg border border-zinc-200 px-5 text-sm font-medium text-zinc-700 transition-all hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.97]"
-            style={{ transitionProperty: 'background-color, border-color, transform', transitionDuration: '200ms', transitionTimingFunction: 'cubic-bezier(0.23, 1, 0.32, 1)' }}
-          >
-            API Reference
-          </Link>
+        <span className="hidden text-xs font-medium uppercase tracking-[0.18em] text-[#758079] sm:block">Administration portal</span>
+      </header>
+      <section className="flex flex-1 items-center px-6 pb-20 pt-12 sm:px-10 lg:px-16">
+        <div className="w-full max-w-5xl">
+          <div className="max-w-3xl">
+            <p className="mb-7 text-xs font-semibold uppercase tracking-[0.22em] text-[#a36f16]">Ghana road safety operations</p>
+            <h1 className="max-w-2xl text-5xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-7xl">Safer roads start with a clear response.</h1>
+            <p className="mt-7 max-w-lg text-lg leading-8 text-[#59645d]">Safety Road GH is the administration portal for managing road incidents, alerts, and coordinated response.</p>
+            <Link href="/admin/login" className="group mt-10 inline-flex items-center gap-4 rounded-xl bg-[#17211d] px-5 py-4 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#26342d] active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a36f16]">Go to admin login<ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></Link>
+          </div>
+          <div className="mt-24 border-t border-[#d8ddd8] pt-5 text-xs text-[#758079]">Official Ghana road safety administration</div>
         </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Lock, Mail, AlertCircle } from 'lucide-react';
+import { AlertCircle, Lock, Mail, ShieldCheck } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -23,71 +23,82 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: { error?: string; token?: string; user?: unknown } = {};
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          throw new Error('The login service returned an invalid response. Please try again.');
+        }
+      }
       if (!res.ok) {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Store admin token in localStorage
+      if (!data.token || !data.user) {
+        throw new Error('Login service did not return account details. Please try again.');
+      }
+
       localStorage.setItem('adminToken', data.token);
       localStorage.setItem('adminUser', JSON.stringify(data.user));
 
       router.push('/admin');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-2">
-            <ShieldCheck className="w-8 h-8" />
+    <main className="flex min-h-[100dvh] items-center justify-center bg-[#f5f7fa] px-5 py-10 text-[#242424]">
+      <div className="w-full max-w-[420px] rounded-2xl border border-[#d8ddd8] bg-white p-8 shadow-[0_24px_70px_rgba(23,33,29,0.08)] sm:p-10">
+        <div className="space-y-2 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#0f6cbd] text-white">
+            <ShieldCheck className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold text-white">MTTD Admin Portal</h1>
-          <p className="text-slate-400 text-sm">Ghana Road Safety & Accident Command Center</p>
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#242424]">Admin login</h1>
+          <p className="text-sm text-[#616161]">Safety Road GH administration portal</p>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg flex items-center space-x-2 text-sm">
-            <AlertCircle className="w-5 h-5 shrink-0" />
+          <div className="mt-6 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="mt-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="mb-2 block text-xs font-medium text-[#59645d]">
               Official Email Address
             </label>
             <div className="relative">
-              <Mail className="w-5 h-5 absolute left-3 top-3 text-slate-500" />
+              <Mail className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                className="w-full rounded-lg border border-[#d1d1d1] bg-[#fafafa] py-3 pl-10 pr-3 text-sm text-[#242424] outline-none transition placeholder:text-[#8a8a8a] focus:border-[#0f6cbd] focus:bg-white focus:ring-2 focus:ring-[#0f6cbd]/15"
                 placeholder="admin@safetyroad.gov.gh"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="mb-2 block text-xs font-medium text-[#59645d]">
               Password
             </label>
             <div className="relative">
-              <Lock className="w-5 h-5 absolute left-3 top-3 text-slate-500" />
+              <Lock className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                className="w-full rounded-lg border border-[#d1d1d1] bg-[#fafafa] py-3 pl-10 pr-3 text-sm text-[#242424] outline-none transition placeholder:text-[#8a8a8a] focus:border-[#0f6cbd] focus:bg-white focus:ring-2 focus:ring-[#0f6cbd]/15"
                 placeholder="••••••••"
               />
             </div>
@@ -96,19 +107,13 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-lg transition shadow-lg shadow-amber-500/20 disabled:opacity-50"
+            className="w-full rounded-lg bg-[#0f6cbd] px-4 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#115ea3] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? 'Authenticating...' : 'Sign In to Admin Portal'}
+            {loading ? 'Authenticating...' : 'Sign in to admin portal'}
           </button>
         </form>
 
-        <div className="pt-4 border-t border-slate-800 text-center">
-          <p className="text-xs text-slate-500">
-            For demonstration, default credentials: <br />
-            <span className="text-amber-400 font-mono">admin@safetyroad.gov.gh / Admin@123456</span>
-          </p>
-        </div>
       </div>
-    </div>
+    </main>
   );
 }

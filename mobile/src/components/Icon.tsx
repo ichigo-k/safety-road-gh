@@ -20,7 +20,7 @@ export default function Icon({ name, size = 20, color = '#ffffff' }: IconProps) 
     case 'profile':
       return <Feather name="user" size={size} color={color} />;
     case 'accident':
-      return <MaterialCommunityIcons name="car-crash" size={size} color={color} />;
+      return <MaterialCommunityIcons name="car" size={size} color={color} />;
     case 'hazard':
       return <Feather name="alert-triangle" size={size} color={color} />;
     case 'ambulance':
@@ -41,6 +41,16 @@ export default function Icon({ name, size = 20, color = '#ffffff' }: IconProps) 
       return <Feather name="check-circle" size={size} color={color} />;
     case 'phone':
       return <Feather name="phone-call" size={size} color={color} />;
+    case 'logout':
+      return <Feather name="log-out" size={size} color={color} />;
+    case 'chevron':
+      return <Feather name="chevron-right" size={size} color={color} />;
+    case 'settings':
+      return <Feather name="settings" size={size} color={color} />;
+    case 'help':
+      return <Feather name="help-circle" size={size} color={color} />;
+    case 'info':
+      return <Feather name="info" size={size} color={color} />;
     case 'lightbulb':
       return <Feather name="help-circle" size={size} color={color} />;
     case 'shield':

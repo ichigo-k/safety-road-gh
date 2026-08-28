@@ -10,10 +10,13 @@ import {
   Vibration,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { apiFetch } from '../services/api';
 import Icon from '../components/Icon';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface HotspotMarker {
   id: string;
@@ -25,6 +28,16 @@ interface HotspotMarker {
   description?: string;
   status?: string;
   distanceKm?: number;
+}
+
+interface HotspotCluster {
+  id: string;
+  latitude: number;
+  longitude: number;
+  count: number;
+  severity: 'LOW' | 'MODERATE' | 'SEVERE';
+  markers: HotspotMarker[];
+  color: string;
 }
 
 // Haversine formula to compute distance between 2 GPS coordinates in km
@@ -42,14 +55,77 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return R * c;
 }
 
+// Cluster nearby markers within ~1km into hotspot zones
+function clusterMarkers(markers: HotspotMarker[]): HotspotCluster[] {
+  const clusters: HotspotCluster[] = [];
+  const assigned = new Set<string>();
+
+  const incidentMarkers = markers.filter((m) => m.type === 'ACCIDENT' || m.type === 'HAZARD');
+
+  for (const marker of incidentMarkers) {
+    if (assigned.has(marker.id)) continue;
+
+    const nearby = incidentMarkers.filter(
+      (m) => !assigned.has(m.id) && calculateDistanceKm(marker.latitude, marker.longitude, m.latitude, m.longitude) <= 1.0
+    );
+
+    nearby.forEach((m) => assigned.add(m.id));
+
+    const count = nearby.length;
+    let severity: 'LOW' | 'MODERATE' | 'SEVERE';
+    let color: string;
+
+    if (count >= 6) {
+      severity = 'SEVERE';
+      color = '#DC2626'; // Deep red
+    } else if (count >= 3) {
+      severity = 'MODERATE';
+      color = '#F97316'; // Orange
+    } else {
+      severity = 'LOW';
+      color = '#EAB308'; // Yellow
+    }
+
+    const avgLat = nearby.reduce((sum, m) => sum + m.latitude, 0) / count;
+    const avgLng = nearby.reduce((sum, m) => sum + m.longitude, 0) / count;
+
+    clusters.push({
+      id: `cluster-${clusters.length}`,
+      latitude: avgLat,
+      longitude: avgLng,
+      count,
+      severity,
+      markers: nearby,
+      color,
+    });
+  }
+
+  return clusters;
+}
+
+// Convert lat/lng to pixel position on the simulated map
+function geoToPixel(
+  lat: number,
+  lng: number,
+  bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  mapWidth: number,
+  mapHeight: number
+) {
+  const x = ((lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * mapWidth;
+  const y = ((bounds.maxLat - lat) / (bounds.maxLat - bounds.minLat)) * mapHeight;
+  return { x: Math.max(16, Math.min(mapWidth - 16, x)), y: Math.max(16, Math.min(mapHeight - 16, y)) };
+}
+
 export default function MapScreen() {
   const [filter, setFilter] = useState<'ALL' | 'ACCIDENTS' | 'HAZARDS' | 'EMERGENCY'>('ALL');
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [userAddress, setUserAddress] = useState<string>('Detecting GPS location...');
   const [markers, setMarkers] = useState<HotspotMarker[]>([]);
+  const [clusters, setClusters] = useState<HotspotCluster[]>([]);
   const [approachingHotspot, setApproachingHotspot] = useState<HotspotMarker | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedCluster, setSelectedCluster] = useState<HotspotCluster | null>(null);
 
   useEffect(() => {
     initMapAndLocation();
@@ -112,6 +188,10 @@ export default function MapScreen() {
 
       setMarkers(processedMarkers);
 
+      // Build hotspot clusters
+      const hotspotClusters = clusterMarkers(processedMarkers);
+      setClusters(hotspotClusters);
+
       // Check if user is within 3km of an accident or hazard hotspot
       const nearbyHotspot = processedMarkers.find(
         (m) => (m.type === 'ACCIDENT' || m.type === 'HAZARD') && (m.distanceKm || 99) <= 3.0
@@ -145,53 +225,63 @@ export default function MapScreen() {
     return true;
   });
 
+  // Compute map bounds from all markers
+  const allLats = markers.map((m) => m.latitude);
+  const allLngs = markers.map((m) => m.longitude);
+  const bounds = {
+    minLat: Math.min(...(allLats.length ? allLats : [5.45]), userLocation?.latitude || 5.556) - 0.02,
+    maxLat: Math.max(...(allLats.length ? allLats : [5.7]), userLocation?.latitude || 5.556) + 0.02,
+    minLng: Math.min(...(allLngs.length ? allLngs : [-0.35]), userLocation?.longitude || -0.1969) - 0.02,
+    maxLng: Math.max(...(allLngs.length ? allLngs : [-0.05]), userLocation?.longitude || -0.1969) + 0.02,
+  };
+
+  const MAP_HEIGHT = SCREEN_HEIGHT * 0.55;
+  const MAP_WIDTH = SCREEN_WIDTH - 32;
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f59e0b" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0f6cbd" />}
       >
-        {/* Header Bar */}
+        {/* Compact Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.headerSubtitle}>LIVE GPS RADAR</Text>
-            <Text style={styles.headerTitle}>Hotspot & Incident Map</Text>
+            <Text style={styles.headerTitle}>Hotspot Map</Text>
           </View>
           <TouchableOpacity style={styles.gpsChip} onPress={initMapAndLocation}>
-            <Icon name="location" size={14} color="#f59e0b" />
-            <Text style={styles.gpsText}>Radar Active</Text>
+            <View style={styles.gpsLiveDot} />
+            <Text style={styles.gpsText}>Live</Text>
           </TouchableOpacity>
         </View>
 
         {/* User Location Bar */}
         <View style={styles.userLocBar}>
-          <Icon name="location" size={14} color="#3b82f6" />
+          <Icon name="location" size={13} color="#0f6cbd" />
           <Text style={styles.userLocText} numberOfLines={1}>
-            GPS: {userAddress} {userLocation ? `(${userLocation.latitude.toFixed(3)}, ${userLocation.longitude.toFixed(3)})` : ''}
+            {userAddress} {userLocation ? `(${userLocation.latitude.toFixed(3)}, ${userLocation.longitude.toFixed(3)})` : ''}
           </Text>
         </View>
 
-        {/* Hotspot Caution Proximity Alert Banner */}
+        {/* Hotspot Proximity Alert Banner */}
         {approachingHotspot && (
           <View style={styles.cautionBanner}>
             <View style={styles.cautionHeader}>
-              <Icon name="hazard" size={22} color="#ef4444" />
+              <Icon name="hazard" size={20} color="#DC2626" />
               <View style={{ flex: 1 }}>
-                <Text style={styles.cautionTitle}>APPROACHING ACCIDENT HOTSPOT!</Text>
+                <Text style={styles.cautionTitle}>APPROACHING HOTSPOT!</Text>
                 <Text style={styles.cautionSub}>
-                  Vibration triggered: High risk zone detected within {approachingHotspot.distanceKm} km
+                  High risk zone detected within {approachingHotspot.distanceKm} km
                 </Text>
               </View>
             </View>
-            <View style={styles.cautionDetails}>
-              <Text style={styles.cautionLocName}>{approachingHotspot.title}</Text>
-              <Text style={styles.cautionDesc}>{approachingHotspot.locationName} — Drive cautiously!</Text>
-            </View>
+            <Text style={styles.cautionLocName}>{approachingHotspot.title} — {approachingHotspot.locationName}</Text>
           </View>
         )}
 
-        {/* Filter Categories */}
+        {/* Filter Chips */}
         <View style={styles.filterBar}>
           {(['ALL', 'ACCIDENTS', 'HAZARDS', 'EMERGENCY'] as const).map((cat) => (
             <TouchableOpacity
@@ -204,31 +294,139 @@ export default function MapScreen() {
           ))}
         </View>
 
-        {/* Simulated GIS Canvas View */}
-        <View style={styles.mapCanvas}>
-          <View style={styles.gridBackground}>
-            <View style={styles.radarRing1} />
-            <View style={styles.radarRing2} />
-            <Icon name="map" size={48} color="rgba(245, 158, 11, 0.2)" />
-            <Text style={styles.canvasText}>GHANA ROAD NETWORK GIS RADAR</Text>
-            <Text style={styles.canvasSubText}>
-              {filteredMarkers.length} Active Hotspot & Emergency Markers Loaded
-            </Text>
+        {/* Full-Screen Simulated Map Canvas */}
+        <View style={[styles.mapCanvas, { height: MAP_HEIGHT }]}>
+          {/* Grid lines */}
+          {[0.2, 0.4, 0.6, 0.8].map((frac) => (
+            <View key={`h-${frac}`} style={[styles.gridLineH, { top: `${frac * 100}%` }]} />
+          ))}
+          {[0.2, 0.4, 0.6, 0.8].map((frac) => (
+            <View key={`v-${frac}`} style={[styles.gridLineV, { left: `${frac * 100}%` }]} />
+          ))}
+
+          {/* Map label */}
+          <Text style={styles.mapLabel}>GHANA ROAD NETWORK</Text>
+
+          {/* Hotspot cluster dots with severity colors */}
+          {clusters.map((cluster) => {
+            const pos = geoToPixel(cluster.latitude, cluster.longitude, bounds, MAP_WIDTH, MAP_HEIGHT);
+            const dotSize = Math.min(18 + cluster.count * 6, 48);
+            return (
+              <TouchableOpacity
+                key={cluster.id}
+                style={[
+                  styles.hotspotDot,
+                  {
+                    left: pos.x - dotSize / 2,
+                    top: pos.y - dotSize / 2,
+                    width: dotSize,
+                    height: dotSize,
+                    borderRadius: dotSize / 2,
+                    backgroundColor: cluster.color,
+                  },
+                ]}
+                onPress={() => setSelectedCluster(selectedCluster?.id === cluster.id ? null : cluster)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.hotspotCount}>{cluster.count}</Text>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Emergency service markers (blue dots) */}
+          {filteredMarkers
+            .filter((m) => m.type === 'EMERGENCY')
+            .map((m) => {
+              const pos = geoToPixel(m.latitude, m.longitude, bounds, MAP_WIDTH, MAP_HEIGHT);
+              return (
+                <View
+                  key={m.id}
+                  style={[styles.emergencyDot, { left: pos.x - 6, top: pos.y - 6 }]}
+                >
+                  <View style={styles.emergencyDotInner} />
+                </View>
+              );
+            })}
+
+          {/* User location pulse */}
+          {userLocation && (
+            <View
+              style={[
+                styles.userDot,
+                {
+                  left: geoToPixel(userLocation.latitude, userLocation.longitude, bounds, MAP_WIDTH, MAP_HEIGHT).x - 8,
+                  top: geoToPixel(userLocation.latitude, userLocation.longitude, bounds, MAP_WIDTH, MAP_HEIGHT).y - 8,
+                },
+              ]}
+            >
+              <View style={styles.userDotInner} />
+            </View>
+          )}
+
+          {/* Severity legend */}
+          <View style={styles.legendBox}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#EAB308' }]} />
+              <Text style={styles.legendText}>Low</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#F97316' }]} />
+              <Text style={styles.legendText}>Moderate</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#DC2626' }]} />
+              <Text style={styles.legendText}>Severe</Text>
+            </View>
           </View>
+
+          {loading && (
+            <View style={styles.mapLoadingOverlay}>
+              <ActivityIndicator color="#0f6cbd" size="large" />
+              <Text style={styles.mapLoadingText}>Loading hotspots...</Text>
+            </View>
+          )}
         </View>
+
+        {/* Selected Cluster Detail Card */}
+        {selectedCluster && (
+          <View style={[styles.clusterCard, { borderLeftColor: selectedCluster.color }]}>
+            <View style={styles.clusterCardHeader}>
+              <View style={[styles.severityBadge, { backgroundColor: selectedCluster.color }]}>
+                <Text style={styles.severityBadgeText}>{selectedCluster.severity}</Text>
+              </View>
+              <Text style={styles.clusterIncidentCount}>{selectedCluster.count} incidents in this zone</Text>
+            </View>
+            {selectedCluster.markers.slice(0, 3).map((m) => (
+              <View key={m.id} style={styles.clusterIncident}>
+                <Icon
+                  name={m.type === 'ACCIDENT' ? 'accident' : 'hazard'}
+                  size={14}
+                  color={m.type === 'ACCIDENT' ? '#DC2626' : '#F97316'}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.clusterIncidentTitle}>{m.title}</Text>
+                  <Text style={styles.clusterIncidentLoc}>{m.locationName}</Text>
+                </View>
+                {m.distanceKm !== undefined && (
+                  <Text style={styles.clusterIncidentDist}>{m.distanceKm} km</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Hotspot Markers List */}
         <View style={styles.markersSection}>
-          <Text style={styles.sectionTitle}>Hotspots & Incident Radius ({filteredMarkers.length})</Text>
+          <Text style={styles.sectionTitle}>Nearby Incidents ({filteredMarkers.length})</Text>
 
           {loading ? (
-            <ActivityIndicator color="#f59e0b" style={{ padding: 20 }} />
+            <ActivityIndicator color="#0f6cbd" style={{ padding: 20 }} />
           ) : filteredMarkers.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>No incident markers found for this category.</Text>
             </View>
           ) : (
-            filteredMarkers.map((m) => (
+            filteredMarkers.slice(0, 8).map((m) => (
               <View
                 key={m.id}
                 style={[
@@ -237,11 +435,14 @@ export default function MapScreen() {
                   m.type === 'HAZARD' && styles.hazardCard,
                 ]}
               >
-                <View style={styles.markerIconBox}>
+                <View style={[
+                  styles.markerIconBox,
+                  { backgroundColor: m.type === 'ACCIDENT' ? '#FEF2F2' : m.type === 'HAZARD' ? '#FFF7ED' : '#EFF6FF' }
+                ]}>
                   <Icon
                     name={m.type === 'ACCIDENT' ? 'accident' : m.type === 'HAZARD' ? 'hazard' : 'hospital'}
-                    size={22}
-                    color={m.type === 'ACCIDENT' ? '#ef4444' : m.type === 'HAZARD' ? '#f59e0b' : '#3b82f6'}
+                    size={20}
+                    color={m.type === 'ACCIDENT' ? '#DC2626' : m.type === 'HAZARD' ? '#F97316' : '#3b82f6'}
                   />
                 </View>
 
@@ -249,7 +450,7 @@ export default function MapScreen() {
                   <View style={styles.markerHeader}>
                     <Text style={styles.markerTitle}>{m.title}</Text>
                     {m.distanceKm !== undefined && (
-                      <Text style={styles.distBadge}>{m.distanceKm} km away</Text>
+                      <Text style={styles.distBadge}>{m.distanceKm} km</Text>
                     )}
                   </View>
                   <View style={styles.locationRow}>
@@ -270,10 +471,11 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
@@ -284,85 +486,83 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#f59e0b',
+    color: '#0f6cbd',
     letterSpacing: 1.5,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
-    color: '#ffffff',
+    color: '#172b4d',
   },
   gpsChip: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    paddingHorizontal: 10,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     borderWidth: 1,
-    borderColor: '#f59e0b',
+    borderColor: '#BFDBFE',
+  },
+  gpsLiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#22C55E',
   },
   gpsText: {
-    color: '#f59e0b',
-    fontSize: 11,
+    color: '#0f6cbd',
+    fontSize: 12,
     fontWeight: '800',
   },
   userLocBar: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#F8FAFC',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 14,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E2E8F0',
   },
   userLocText: {
-    color: '#cbd5e1',
+    color: '#475569',
     fontSize: 11,
     flex: 1,
   },
   cautionBanner: {
-    backgroundColor: '#7f1d1d',
-    borderWidth: 2,
-    borderColor: '#ef4444',
-    borderRadius: 16,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 14,
     padding: 14,
-    marginBottom: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#DC2626',
   },
   cautionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   cautionTitle: {
-    color: '#fef08a',
+    color: '#DC2626',
     fontWeight: '900',
     fontSize: 13,
     letterSpacing: 0.5,
   },
   cautionSub: {
-    color: '#fca5a5',
+    color: '#991B1B',
     fontSize: 11,
-  },
-  cautionDetails: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 10,
-    padding: 10,
   },
   cautionLocName: {
-    color: '#ffffff',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  cautionDesc: {
-    color: '#fef08a',
-    fontSize: 11,
-    marginTop: 2,
+    color: '#7F1D1D',
+    fontWeight: '700',
+    fontSize: 12,
   },
   filterBar: {
     flexDirection: 'row',
@@ -372,67 +572,192 @@ const styles = StyleSheet.create({
   filterChip: {
     flex: 1,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
-    backgroundColor: '#1e293b',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E2E8F0',
   },
   filterChipActive: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#f59e0b',
+    backgroundColor: '#0f6cbd',
+    borderColor: '#0f6cbd',
   },
   filterText: {
-    color: '#94a3b8',
+    color: '#64748B',
     fontSize: 10,
     fontWeight: '800',
   },
   filterTextActive: {
-    color: '#0f172a',
+    color: '#ffffff',
   },
   mapCanvas: {
-    height: 160,
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
+    backgroundColor: '#F0FDF9',
+    borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#D1FAE5',
+    position: 'relative',
+  },
+  gridLineH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+  },
+  gridLineV: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+  },
+  mapLabel: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    fontSize: 9,
+    fontWeight: '800',
+    color: 'rgba(16, 185, 129, 0.3)',
+    letterSpacing: 2,
+  },
+  hotspotDot: {
+    position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
+    opacity: 0.85,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  gridBackground: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  radarRing1: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
-  },
-  radarRing2: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.1)',
-  },
-  canvasText: {
+  hotspotCount: {
     color: '#ffffff',
+    fontSize: 10,
     fontWeight: '900',
-    fontSize: 13,
-    marginTop: 8,
-    letterSpacing: 1,
   },
-  canvasSubText: {
-    color: '#94a3b8',
-    fontSize: 11,
-    marginTop: 2,
+  emergencyDot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emergencyDotInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#3B82F6',
+  },
+  userDot: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(15, 108, 189, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userDotInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0f6cbd',
+  },
+  legendBox: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 10,
+    padding: 8,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  mapLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapLoadingText: {
+    color: '#64748B',
+    fontSize: 12,
+    marginTop: 8,
+  },
+  clusterCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderLeftWidth: 4,
+  },
+  clusterCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  severityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  severityBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  clusterIncidentCount: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  clusterIncident: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  clusterIncidentTitle: {
+    color: '#172b4d',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  clusterIncidentLoc: {
+    color: '#94A3B8',
+    fontSize: 10,
+  },
+  clusterIncidentDist: {
+    color: '#64748B',
+    fontSize: 10,
+    fontWeight: '700',
   },
   markersSection: {
     gap: 10,
@@ -440,44 +765,45 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#94a3b8',
+    color: '#475569',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   emptyCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#F8FAFC',
     padding: 16,
     borderRadius: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   emptyText: {
-    color: '#64748b',
+    color: '#94A3B8',
     fontSize: 12,
   },
   markerCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderRadius: 14,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E2E8F0',
   },
   accidentCard: {
-    borderColor: 'rgba(239, 68, 68, 0.4)',
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#DC2626',
   },
   hazardCard: {
-    borderColor: 'rgba(245, 158, 11, 0.4)',
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#F97316',
   },
   markerIconBox: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#0f172a',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -487,16 +813,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   markerTitle: {
-    color: '#ffffff',
+    color: '#172b4d',
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 13,
     flex: 1,
   },
   distBadge: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#f59e0b',
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    color: '#0f6cbd',
+    backgroundColor: '#EFF6FF',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -508,11 +834,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   markerLoc: {
-    color: '#cbd5e1',
+    color: '#94A3B8',
     fontSize: 11,
   },
   markerDesc: {
-    color: '#94a3b8',
+    color: '#64748B',
     fontSize: 11,
     marginTop: 4,
     lineHeight: 14,
