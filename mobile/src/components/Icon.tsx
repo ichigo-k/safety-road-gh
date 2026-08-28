@@ -31,6 +31,8 @@ export default function Icon({ name, size = 20, color = '#ffffff' }: IconProps) 
       return <MaterialCommunityIcons name="fire-truck" size={size} color={color} />;
     case 'location':
       return <Feather name="map-pin" size={size} color={color} />;
+    case 'search':
+      return <Feather name="search" size={size} color={color} />;
     case 'hospital':
       return <MaterialCommunityIcons name="hospital-building" size={size} color={color} />;
     case 'camera':

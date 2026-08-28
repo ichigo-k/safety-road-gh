@@ -183,15 +183,7 @@ export default function App() {
 
         {screen === 'EMERGENCY' && <EmergencyScreen />}
 
-        {screen === 'ROAD_ALERTS' && (
-          <HomeScreen
-            onNavigateToReport={(type) => {
-              setReportType(type);
-              setScreen('REPORT');
-            }}
-            onNavigateToEmergency={() => setScreen('EMERGENCY')}
-          />
-        )}
+        {screen === 'ROAD_ALERTS' && <NotificationsScreen />}
 
         {screen === 'ALERT_DETAILS' && (
           <AlertDetailsScreen alert={selectedAlert} onBack={() => setScreen('HOME')} />
