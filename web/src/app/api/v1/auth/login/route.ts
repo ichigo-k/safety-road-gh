@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { comparePassword, signToken } from '@/lib/auth';
+import { comparePassword, normalizeRole, signToken } from '@/lib/auth';
 
 const DEMO_ADMIN = {
   email: 'admin@safetyroad.gov.gh',
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const token = signToken({
       userId: user.id,
       email: user.email,
-      role: user.role,
+      role: normalizeRole(user.role),
       full_name: user.full_name,
     });
 
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
         full_name: user.full_name,
         email: user.email,
         phone: user.phone,
-        role: user.role,
+        role: normalizeRole(user.role),
       },
       token,
     });

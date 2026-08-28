@@ -245,7 +245,7 @@ export default function App() {
             <Icon
               name="home"
               size={18}
-              color={(screen === 'HOME' || screen === 'REPORT' || screen === 'EMERGENCY') ? '#0f6cbd' : '#98a2b3'}
+              color={(screen === 'HOME' || screen === 'REPORT' || screen === 'EMERGENCY') ? '#17b85a' : '#98a2b3'}
             />
             <Text style={[styles.tabLabel, (screen === 'HOME' || screen === 'REPORT' || screen === 'EMERGENCY') && styles.activeTabLabel]}>Home</Text>
           </TouchableOpacity>
@@ -254,7 +254,7 @@ export default function App() {
             style={[styles.tabItem, screen === 'MAP' && styles.activeTabItem]}
             onPress={() => setScreen('MAP')}
           >
-            <Icon name="map" size={18} color={screen === 'MAP' ? '#0f6cbd' : '#98a2b3'} />
+            <Icon name="map" size={18} color={screen === 'MAP' ? '#17b85a' : '#98a2b3'} />
             <Text style={[styles.tabLabel, screen === 'MAP' && styles.activeTabLabel]}>Map</Text>
           </TouchableOpacity>
 
@@ -262,7 +262,7 @@ export default function App() {
             style={[styles.tabItem, screen === 'MY_REPORTS' && styles.activeTabItem]}
             onPress={() => setScreen('MY_REPORTS')}
           >
-            <Icon name="reports" size={18} color={screen === 'MY_REPORTS' ? '#0f6cbd' : '#98a2b3'} />
+            <Icon name="reports" size={18} color={screen === 'MY_REPORTS' ? '#17b85a' : '#98a2b3'} />
             <Text style={[styles.tabLabel, screen === 'MY_REPORTS' && styles.activeTabLabel]}>Reports</Text>
           </TouchableOpacity>
 
@@ -270,7 +270,7 @@ export default function App() {
             style={[styles.tabItem, screen === 'ROAD_ALERTS' && styles.activeTabItem]}
             onPress={() => setScreen('ROAD_ALERTS')}
           >
-            <Icon name="alerts" size={18} color={screen === 'ROAD_ALERTS' ? '#d92d20' : '#98a2b3'} />
+            <Icon name="alerts" size={18} color={screen === 'ROAD_ALERTS' ? '#17b85a' : '#98a2b3'} />
             <Text style={[styles.tabLabel, screen === 'ROAD_ALERTS' && styles.activeTabLabel]}>Alerts</Text>
           </TouchableOpacity>
 
@@ -278,7 +278,7 @@ export default function App() {
             style={[styles.tabItem, screen === 'PROFILE' && styles.activeTabItem]}
             onPress={() => setScreen('PROFILE')}
           >
-            <Icon name="profile" size={18} color={screen === 'PROFILE' ? '#0f6cbd' : '#98a2b3'} />
+            <Icon name="profile" size={18} color={screen === 'PROFILE' ? '#17b85a' : '#98a2b3'} />
             <Text style={[styles.tabLabel, screen === 'PROFILE' && styles.activeTabLabel]}>Profile</Text>
           </TouchableOpacity>
         </View>
@@ -290,7 +290,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f4f8f5',
   },
   content: {
     flex: 1,
@@ -298,12 +298,12 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#ffffff',
-    borderRadius: 28,
+    borderRadius: 22,
     marginHorizontal: 14,
     marginBottom: 12,
     paddingVertical: 7,
     paddingHorizontal: 6,
-    shadowColor: '#172b4d',
+    shadowColor: '#102018',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   activeTabItem: {
-    backgroundColor: '#eaf3fb',
+    backgroundColor: '#e5f8eb',
   },
   tabLabel: {
     fontSize: 10,
@@ -326,6 +326,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   activeTabLabel: {
-    color: '#0f6cbd',
+    color: '#0e7a3f',
   },
 });
