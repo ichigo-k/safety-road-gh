@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata } from "next";
+import type React from "react";
 import "./globals.css";
 import AppFluentProvider from "./FluentProvider";
 
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
   description: "Road safety reporting and response platform for Ghana.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"

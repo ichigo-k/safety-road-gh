@@ -124,7 +124,7 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
         latitude,
         longitude,
         locationName,
-        photoUrl: photoUri || 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=800',
+        photoUrl: photoUri || null,
       };
 
       await apiFetch('/reports', {
@@ -146,7 +146,7 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor="#f4f8f5" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.headerTitle}>Report Incident or Hazard</Text>
         <Text style={styles.headerSubtitle}>Submit evidence to emergency services & fellow road users</Text>
@@ -158,7 +158,7 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
             onPress={() => setType('ACCIDENT')}
           >
             <View style={styles.typeRow}>
-              <Icon name="accident" size={16} color={type === 'ACCIDENT' ? '#ffffff' : '#94a3b8'} />
+              <Icon name="accident" size={16} color={type === 'ACCIDENT' ? '#b74747' : '#8a9a91'} />
               <Text style={[styles.typeBtnText, type === 'ACCIDENT' && styles.activeTypeBtnText]}>Accident</Text>
             </View>
           </TouchableOpacity>
@@ -167,7 +167,7 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
             onPress={() => setType('HAZARD')}
           >
             <View style={styles.typeRow}>
-              <Icon name="hazard" size={16} color={type === 'HAZARD' ? '#ffffff' : '#94a3b8'} />
+              <Icon name="hazard" size={16} color={type === 'HAZARD' ? '#a76513' : '#8a9a91'} />
               <Text style={[styles.typeBtnText, type === 'HAZARD' && styles.activeTypeBtnText]}>Road Hazard</Text>
             </View>
           </TouchableOpacity>
@@ -205,7 +205,7 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
           <TextInput
             style={styles.input}
             placeholder={type === 'ACCIDENT' ? 'e.g. Collision near Tema Motorway flyover' : 'e.g. Deep pothole on N1 Expressway'}
-            placeholderTextColor="#64748b"
+            placeholderTextColor="#8a9a91"
             value={title}
             onChangeText={setTitle}
           />
@@ -216,7 +216,7 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Describe what happened, road condition, lane blockage..."
-            placeholderTextColor="#64748b"
+            placeholderTextColor="#8a9a91"
             multiline
             numberOfLines={3}
             value={description}
@@ -260,7 +260,7 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
             value={locationName}
             onChangeText={setLocationName}
             placeholder="Location address or landmark..."
-            placeholderTextColor="#64748b"
+            placeholderTextColor="#8a9a91"
           />
           <Text style={styles.gpsCoords}>
             Lat: {latitude.toFixed(4)} | Lng: {longitude.toFixed(4)}
@@ -272,11 +272,11 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
           <Text style={styles.label}>Photographic Evidence</Text>
           <View style={styles.photoActions}>
             <TouchableOpacity style={styles.photoBtn} onPress={takePhoto}>
-              <Icon name="camera" size={16} color="#ffffff" />
+              <Icon name="camera" size={16} color="#0e7a3f" />
               <Text style={styles.photoBtnText}>Snap Photo</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.photoBtn} onPress={pickImage}>
-              <Icon name="gallery" size={16} color="#ffffff" />
+              <Icon name="gallery" size={16} color="#0e7a3f" />
               <Text style={styles.photoBtnText}>Choose Gallery</Text>
             </TouchableOpacity>
           </View>
@@ -293,7 +293,7 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#0f172a" />
+            <ActivityIndicator color="#0a3320" />
           ) : (
             <Text style={styles.submitBtnText}>Submit Official Incident Report</Text>
           )}
@@ -306,7 +306,7 @@ export default function ReportSubmitScreen({ initialType = 'ACCIDENT', onSuccess
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#f4f8f5',
   },
   scrollContent: {
     padding: 20,
@@ -314,17 +314,19 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#ffffff',
+    color: '#102018',
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: '#6d7d73',
     marginBottom: 20,
   },
   typeSelector: {
     flexDirection: 'row',
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e0e9e2',
     padding: 4,
     marginBottom: 20,
   },
@@ -340,18 +342,18 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   activeAccidentBtn: {
-    backgroundColor: '#ef4444',
+    backgroundColor: '#ffebeb',
   },
   activeHazardBtn: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#e5f8eb',
   },
   typeBtnText: {
-    color: '#94a3b8',
+    color: '#8a9a91',
     fontWeight: '800',
     fontSize: 14,
   },
   activeTypeBtnText: {
-    color: '#ffffff',
+    color: '#203128',
   },
   inputGroup: {
     marginBottom: 16,
@@ -359,7 +361,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#cbd5e1',
+    color: '#6d7d73',
     marginBottom: 6,
     textTransform: 'uppercase',
   },
@@ -369,33 +371,33 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e0e9e2',
   },
   chipActive: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#f59e0b',
+    backgroundColor: '#e5f8eb',
+    borderColor: '#b9eac7',
   },
   chipText: {
-    color: '#cbd5e1',
+    color: '#6d7d73',
     fontSize: 12,
     fontWeight: '700',
   },
   chipActiveText: {
-    color: '#0f172a',
+    color: '#0a3320',
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e0e9e2',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#ffffff',
+    color: '#203128',
     fontSize: 14,
   },
   textArea: {
@@ -412,13 +414,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   refreshLoc: {
-    color: '#f59e0b',
+    color: '#17b85a',
     fontSize: 11,
     fontWeight: '800',
   },
   gpsCoords: {
     fontSize: 10,
-    color: '#64748b',
+    color: '#8a9a91',
     marginTop: 4,
   },
   photoActions: {
@@ -427,18 +429,18 @@ const styles = StyleSheet.create({
   },
   photoBtn: {
     flex: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e0e9e2',
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 6,
   },
   photoBtnText: {
-    color: '#ffffff',
+    color: '#203128',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -457,25 +459,25 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    backgroundColor: 'rgba(183, 71, 71, 0.92)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
   removePhotoText: {
-    color: '#ffffff',
+    color: '#203128',
     fontSize: 11,
     fontWeight: '800',
   },
   submitBtn: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#2fdf76',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
     marginTop: 10,
   },
   submitBtnText: {
-    color: '#0f172a',
+    color: '#0a3320',
     fontWeight: '900',
     fontSize: 15,
   },

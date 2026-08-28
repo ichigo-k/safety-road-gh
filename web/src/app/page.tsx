@@ -1,32 +1,28 @@
 import Link from 'next/link';
-import { ArrowUpRight, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CheckCircle2, MapPin, Radio, ShieldCheck, Sparkles } from 'lucide-react';
 
 export const metadata = {
-  title: 'Safety Road GH',
-  description: 'Safety Road GH administration portal.',
+  title: 'Safety Road GH | Road intelligence for Ghana',
+  description: 'A live road-safety operations network for Ghana.',
 };
 
 export default function RootHomePage() {
   return (
-    <main className="flex min-h-[100dvh] flex-col bg-[#f4f5f2] text-[#17211d]">
-      <header className="flex items-center justify-between px-6 py-6 sm:px-10 lg:px-16">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#17211d] text-[#f4b63f]"><ShieldCheck className="h-5 w-5" strokeWidth={1.8} /></div>
-          <span className="text-sm font-semibold tracking-[0.08em]">SAFETY ROAD GH</span>
-        </div>
-        <span className="hidden text-xs font-medium uppercase tracking-[0.18em] text-[#758079] sm:block">Administration portal</span>
-      </header>
-      <section className="flex flex-1 items-center px-6 pb-20 pt-12 sm:px-10 lg:px-16">
-        <div className="w-full max-w-5xl">
-          <div className="max-w-3xl">
-            <p className="mb-7 text-xs font-semibold uppercase tracking-[0.22em] text-[#a36f16]">Ghana road safety operations</p>
-            <h1 className="max-w-2xl text-5xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-7xl">Safer roads start with a clear response.</h1>
-            <p className="mt-7 max-w-lg text-lg leading-8 text-[#59645d]">Safety Road GH is the administration portal for managing road incidents, alerts, and coordinated response.</p>
-            <Link href="/admin/login" className="group mt-10 inline-flex items-center gap-4 rounded-xl bg-[#17211d] px-5 py-4 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#26342d] active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a36f16]">Go to admin login<ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></Link>
-          </div>
-          <div className="mt-24 border-t border-[#d8ddd8] pt-5 text-xs text-[#758079]">Official Ghana road safety administration</div>
-        </div>
-      </section>
+    <main className="min-h-[100dvh] overflow-hidden bg-[#f4f7f4] text-[#102018]">
+      <div className="relative mx-auto max-w-[1440px] px-5 pb-8 pt-5 sm:px-8 lg:px-12">
+        <div className="pointer-events-none absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full bg-[#c8f8d8] opacity-50 blur-3xl" />
+        <header className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#2fdf76] text-[#0a3320] shadow-[0_8px_18px_rgba(47,223,118,.24)]"><ShieldCheck className="h-5 w-5" /></div><div><p className="text-[15px] font-extrabold leading-none tracking-[-.03em]">Safety Road</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[.22em] text-[#17b85a]">Ghana</p></div></div>
+          <div className="flex items-center gap-3"><span className="hidden items-center gap-2 rounded-full border border-[#dfe9e1] bg-white/75 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[.14em] text-[#6d7d73] sm:inline-flex"><span className="h-1.5 w-1.5 rounded-full bg-[#2fdf76]" />Network online</span><Link href="/admin/login" className="rounded-xl bg-[#102018] px-4 py-2.5 text-xs font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-[#20382a]">Sign in</Link></div>
+        </header>
+
+        <section className="relative z-10 grid items-center gap-12 pb-20 pt-20 lg:grid-cols-[1.05fr_.95fr] lg:gap-20 lg:pb-28 lg:pt-28">
+          <div><div className="inline-flex items-center gap-2 rounded-full bg-[#e5f8eb] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[.16em] text-[#0e7a3f]"><Sparkles className="h-3.5 w-3.5" />Road intelligence, made human</div><h1 className="mt-6 max-w-2xl text-[clamp(3.4rem,7vw,6.9rem)] font-extrabold leading-[.91] tracking-[-.075em]">Every road signal, <span className="text-[#17b85a]">moving</span> toward safer streets.</h1><p className="mt-7 max-w-xl text-base leading-7 text-[#6d7d73] sm:text-lg">Safety Road GH brings citizens, responders, and command teams into one clear network for reporting hazards, coordinating response, and keeping Ghana moving.</p><div className="mt-9 flex flex-wrap items-center gap-3"><Link href="/admin/login" className="inline-flex items-center gap-3 rounded-xl bg-[#2fdf76] px-5 py-3.5 text-sm font-extrabold text-[#0a3320] shadow-[0_10px_24px_rgba(47,223,118,.25)] transition hover:-translate-y-0.5 hover:bg-[#45e982] active:scale-[.98]">Open command center <ArrowRight className="h-4 w-4" /></Link><span className="text-xs font-semibold text-[#8a9a91]">Built for Ghana’s road network</span></div></div>
+          <div className="relative min-h-[410px] overflow-hidden rounded-[30px] bg-[#102018] p-4 shadow-[0_28px_65px_rgba(16,32,24,.18)] sm:min-h-[480px] sm:p-5"><div className="absolute inset-0 opacity-80" style={{ backgroundImage: 'linear-gradient(128deg, transparent 0 38%, rgba(111,239,156,.18) 38.2% 38.7%, transparent 39%), linear-gradient(22deg, transparent 0 57%, rgba(111,239,156,.12) 57.2% 57.7%, transparent 58%), linear-gradient(88deg, transparent 0 72%, rgba(255,255,255,.08) 72.2% 72.5%, transparent 73%)' }} /><div className="relative flex h-full min-h-[378px] flex-col justify-between rounded-[22px] border border-[#376048] bg-[#173525]/80 p-5"><div className="flex items-start justify-between"><div><p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-[#73ef9c]">Live network</p><p className="mt-2 text-xl font-extrabold tracking-[-.04em] text-white">Accra response map</p></div><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2fdf76] text-[#0a3320]"><MapPin className="h-5 w-5" /></div></div><div className="relative flex-1"><span className="absolute left-[25%] top-[22%] flex h-4 w-4 animate-pulse-dot rounded-full bg-[#e95d5d] ring-4 ring-[#e95d5d]/20" /><span className="absolute left-[64%] top-[34%] flex h-4 w-4 animate-pulse-dot rounded-full bg-[#f1a33a] ring-4 ring-[#f1a33a]/20" style={{ animationDelay: '.45s' }} /><span className="absolute left-[47%] top-[68%] flex h-4 w-4 animate-pulse-dot rounded-full bg-[#2fdf76] ring-4 ring-[#2fdf76]/20" style={{ animationDelay: '.8s' }} /><div className="absolute bottom-5 left-0 right-0 mx-auto max-w-[285px] rounded-2xl border border-[#3b624b] bg-[#102018]/90 p-4 backdrop-blur"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e5f8eb] text-[#0e7a3f]"><Radio className="h-4 w-4" /></div><div><p className="text-xs font-bold text-white">Network status</p><p className="mt-1 text-[11px] text-[#a8c0af]">All command channels are operational.</p></div></div></div></div><div className="flex items-center justify-between border-t border-[#376048] pt-4"><span className="text-[10px] font-bold uppercase tracking-[.12em] text-[#a8c0af]">MTTD Command</span><span className="inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.12em] text-[#73ef9c]"><span className="h-1.5 w-1.5 rounded-full bg-[#2fdf76]" />Live</span></div></div></div>
+        </section>
+
+        <section className="relative z-10 grid gap-4 border-t border-[#dfe9e1] pt-6 sm:grid-cols-3"><div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#17b85a]" /><div><p className="text-sm font-bold">Fast citizen reporting</p><p className="mt-1 text-xs leading-5 text-[#8a9a91]">Capture a signal with location and context in seconds.</p></div></div><div className="flex items-start gap-3"><MapPin className="mt-0.5 h-5 w-5 shrink-0 text-[#17b85a]" /><div><p className="text-sm font-bold">Street-level visibility</p><p className="mt-1 text-xs leading-5 text-[#8a9a91]">See where incidents are forming across the network.</p></div></div><div className="flex items-start gap-3"><Radio className="mt-0.5 h-5 w-5 shrink-0 text-[#17b85a]" /><div><p className="text-sm font-bold">Clearer response</p><p className="mt-1 text-xs leading-5 text-[#8a9a91]">Keep teams and the public aligned with live alerts.</p></div></div></section>
+      </div>
     </main>
   );
 }

@@ -44,7 +44,7 @@ export default function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <StatusBar barStyle="dark-content" backgroundColor="#f4f8f5" />
       <View style={styles.content}>
         <TouchableOpacity style={styles.skipBtn} onPress={onFinish}>
           <Text style={styles.skipText}>Skip</Text>
@@ -83,7 +83,7 @@ export default function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f4f8f5',
   },
   content: {
     flex: 1,
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   skipText: {
-    color: '#667085',
+    color: '#6d7d73',
     fontWeight: '700',
     fontSize: 14,
   },
@@ -120,13 +120,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#172b4d',
+    color: '#102018',
     textAlign: 'center',
     marginBottom: 12,
   },
   description: {
     fontSize: 14,
-    color: '#667085',
+    color: '#6d7d73',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -139,20 +139,20 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#d0d5dd',
+    backgroundColor: '#dce5de',
   },
   activeIndicator: {
     width: 24,
-    backgroundColor: '#0f6cbd',
+    backgroundColor: '#2fdf76',
   },
   nextBtn: {
-    backgroundColor: '#0f6cbd',
+    backgroundColor: '#2fdf76',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
   },
   nextBtnText: {
-    color: '#ffffff',
+    color: '#0a3320',
     fontWeight: '900',
     fontSize: 16,
   },

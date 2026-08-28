@@ -21,10 +21,10 @@ interface AuthScreenProps {
 
 export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('kwame.mensah@gmail.com');
-  const [password, setPassword] = useState('Citizen@123456');
-  const [name, setName] = useState('Kwame Mensah');
-  const [phone, setPhone] = useState('+233241234567');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -59,7 +59,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <StatusBar barStyle="dark-content" backgroundColor="#f4f8f5" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Branding Header */}
         <View style={styles.header}>
@@ -93,7 +93,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
               <TextInput
                 style={styles.input}
                 placeholder="Kwame Mensah"
-                placeholderTextColor="#64748b"
+                placeholderTextColor="#a2b0a7"
                 value={name}
                 onChangeText={setName}
               />
@@ -105,7 +105,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
             <TextInput
               style={styles.input}
               placeholder="user@example.com"
-              placeholderTextColor="#64748b"
+              placeholderTextColor="#a2b0a7"
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
@@ -119,7 +119,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
               <TextInput
                 style={styles.input}
                 placeholder="+233 24 123 4567"
-                placeholderTextColor="#64748b"
+                placeholderTextColor="#a2b0a7"
                 keyboardType="phone-pad"
                 value={phone}
                 onChangeText={setPhone}
@@ -132,7 +132,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
             <TextInput
               style={styles.input}
               placeholder="••••••••"
-              placeholderTextColor="#64748b"
+              placeholderTextColor="#a2b0a7"
               secureTextEntry
               value={password}
               onChangeText={setPassword}
@@ -176,12 +176,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#172b4d',
+    color: '#102018',
     letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 13,
-    color: '#667085',
+    color: '#6d7d73',
     textAlign: 'center',
     marginTop: 4,
   },
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#f6f8fb',
+    backgroundColor: '#eef7f0',
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
@@ -203,15 +203,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#0f6cbd',
+    backgroundColor: '#2fdf76',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#94a3b8',
+    color: '#8a9a91',
   },
   activeTabText: {
-    color: '#ffffff',
+    color: '#0a3320',
   },
   inputGroup: {
     marginBottom: 16,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#667085',
+    color: '#6d7d73',
     marginBottom: 6,
     textTransform: 'uppercase',
   },
@@ -230,18 +230,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#172b4d',
+    color: '#102018',
     fontSize: 15,
   },
   button: {
-    backgroundColor: '#0f6cbd',
+    backgroundColor: '#2fdf76',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonText: {
-    color: '#ffffff',
+    color: '#0a3320',
     fontWeight: '900',
     fontSize: 15,
   },
@@ -249,9 +249,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#fff1f0',
+    backgroundColor: '#fff5f5',
     borderWidth: 1,
-    borderColor: '#fecdca',
+    borderColor: '#f4d1d1',
     borderRadius: 8,
     padding: 10,
     marginTop: 4,
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     flex: 1,
-    color: '#b42318',
+    color: '#b74747',
     fontSize: 12,
     lineHeight: 17,
   },

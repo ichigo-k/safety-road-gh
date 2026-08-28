@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, signToken } from '@/lib/auth';
+import { hashPassword, normalizeRole, signToken } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     const token = signToken({
       userId: user.id,
       email: user.email,
-      role: user.role,
+      role: normalizeRole(user.role),
       full_name: user.full_name,
     });
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
           full_name: user.full_name,
           email: user.email,
           phone: user.phone,
-          role: user.role,
+          role: normalizeRole(user.role),
         },
         token,
       },
