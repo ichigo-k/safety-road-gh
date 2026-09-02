@@ -1,55 +1,85 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
+  Alert,
+} from 'react-native';
+import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface ForgotPasswordScreenProps {
   onCodeSent: (email: string) => void;
   onBackToLogin: () => void;
 }
 
-export default function ForgotPasswordScreen({ onCodeSent, onBackToLogin }: ForgotPasswordScreenProps) {
+export default function ForgotPasswordScreen({
+  onCodeSent,
+  onBackToLogin,
+}: ForgotPasswordScreenProps) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSendCode = () => {
-    if (!email) {
+    if (!email.trim()) {
       Alert.alert('Required', 'Please enter your registered email address.');
       return;
     }
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      Alert.alert('Code Sent!', `A 6-digit password reset code has been sent to ${email}`);
-      onCodeSent(email);
-    }, 1000);
+      Alert.alert('Code Sent', `A 6-digit password reset code has been sent to ${email}`);
+      onCodeSent(email.trim());
+    }, 800);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.content}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBackToLogin}>
-          <Text style={styles.backText}>← Back to Sign In</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.title}>Forgot Password?</Text>
-        <Text style={styles.subtitle}>Enter your email address to receive a 6-digit verification code to reset your account password.</Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Registered Email Address</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="user@example.com"
-            placeholderTextColor="#64748b"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBackToLogin}>
+            <Icon name="back" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>Account Recovery</Text>
+            <Text style={styles.headerSubtitle}>Reset your Safety Road GH password</Text>
+          </View>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleSendCode} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Sending Code...' : 'Send Verification Code'}</Text>
-        </TouchableOpacity>
+        <View style={styles.card}>
+          <Text style={styles.cardDesc}>
+            Enter your registered email address to receive a secure 6-digit verification code.
+          </Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>REGISTERED EMAIL</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="user@example.com"
+              placeholderTextColor={colors.textDisabled}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleSendCode}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? 'Sending Code...' : 'Send Verification Code'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -58,60 +88,82 @@ export default function ForgotPasswordScreen({ onCodeSent, onBackToLogin }: Forg
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
   },
   content: {
-    padding: 24,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   backBtn: {
-    marginBottom: 24,
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  backText: {
-    color: '#f59e0b',
-    fontWeight: '700',
-    fontSize: 14,
+  headerCopy: {
+    flex: 1,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginBottom: 6,
+  headerTitle: {
+    ...typography.headline,
+    color: colors.textPrimary,
   },
-  subtitle: {
-    fontSize: 13,
-    color: '#94a3b8',
-    marginBottom: 24,
+  headerSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.card,
+  },
+  cardDesc: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
     lineHeight: 20,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#cbd5e1',
+    ...typography.label,
+    color: colors.textTertiary,
     marginBottom: 6,
-    textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surfaceVariant,
     borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 12,
-    paddingHorizontal: 14,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    color: '#ffffff',
-    fontSize: 15,
+    color: colors.textPrimary,
+    fontSize: 14,
   },
   button: {
-    backgroundColor: '#f59e0b',
-    paddingVertical: 15,
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: radius.md,
     alignItems: 'center',
+    ...shadows.card,
   },
   buttonText: {
-    color: '#0f172a',
-    fontWeight: '900',
-    fontSize: 15,
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

@@ -1,51 +1,162 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  SafeAreaView,
+  StatusBar,
+  TouchableOpacity,
+  Share,
+  Linking,
+} from 'react-native';
+import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface AlertDetailsScreenProps {
   alert: any;
   onBack: () => void;
+  onOpenMap?: () => void;
 }
 
-export default function AlertDetailsScreen({ alert, onBack }: AlertDetailsScreenProps) {
+export default function AlertDetailsScreen({
+  alert,
+  onBack,
+  onOpenMap,
+}: AlertDetailsScreenProps) {
   if (!alert) {
     return (
       <SafeAreaView style={styles.container}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={{ color: '#fff', padding: 20 }}>No alert details selected.</Text>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+            <Icon name="back" size={18} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Road Alert</Text>
+        </View>
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyText}>No advisory broadcast selected.</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
+  const isCritical = alert.severity === 'HIGH' || alert.severity === 'CRITICAL';
+  const severityColor = isCritical ? colors.danger : colors.warning;
+  const severityBg = isCritical ? colors.dangerLight : colors.warningLight;
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Ghana MTTD Road Advisory: [${alert.severity || 'BROADCAST'}] ${alert.title}. ${alert.description} (${alert.locationName || 'Ghana Road Network'}).`,
+      });
+    } catch (e) {}
+  };
+
+  const handleCallPolice = () => {
+    Linking.openURL('tel:18555');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Back to Alerts</Text>
-        </TouchableOpacity>
-
-        <View style={styles.badgeRow}>
-          <Text style={styles.severityBadge}>[{alert.severity}] SEVERITY</Text>
-          <Text style={styles.typeBadge}>{alert.alertType}</Text>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* ── Top Bar ────────────────────────────────────────────────────────── */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
+            <Icon name="back" size={18} color={colors.text} />
+          </TouchableOpacity>
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>Advisory Dossier</Text>
+            <Text style={styles.headerSubtitle}>Ghana Police MTTD Broadcast Network</Text>
+          </View>
+          <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.8}>
+            <Icon name="logout" size={16} color={colors.primary} />
+          </TouchableOpacity>
         </View>
 
-        <Text style={styles.title}>{alert.title}</Text>
-        {alert.locationName && <Text style={styles.location}>📍 Affected Area: {alert.locationName}</Text>}
-        <Text style={styles.date}>Issued on {new Date(alert.createdAt).toLocaleString()}</Text>
+        {/* ── Severity & Header Hero Card ─────────────────────────────────────── */}
+        <View style={styles.heroCard}>
+          <View style={styles.badgeRow}>
+            <View style={[styles.severityBadge, { backgroundColor: severityBg }]}>
+              <View style={[styles.severityDot, { backgroundColor: severityColor }]} />
+              <Text style={[styles.severityText, { color: severityColor }]}>
+                {alert.severity || 'BROADCAST'} SEVERITY
+              </Text>
+            </View>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeBadgeText}>OFFICIAL BULLETIN</Text>
+            </View>
+          </View>
 
-        <View style={styles.descCard}>
-          <Text style={styles.descLabel}>Official Broadcast Details</Text>
-          <Text style={styles.descText}>{alert.description}</Text>
-        </View>
+          <Text style={styles.alertTitle}>
+            {alert.title && alert.title.trim() ? alert.title : 'Ghana Road Cautionary Advisory'}
+          </Text>
 
-        <View style={styles.adviceCard}>
-          <Text style={styles.adviceTitle}>💡 Recommended Driver Advisory</Text>
-          <Text style={styles.adviceText}>
-            Driver caution is strongly advised. Maintain safe following distances, use hazard indicator lights where necessary, and adhere to traffic officer directions.
+          {alert.locationName ? (
+            <View style={styles.locationRow}>
+              <Icon name="location" size={13} color={colors.textSubtle} />
+              <Text style={styles.locationText}>{alert.locationName}</Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.timestampText}>
+            Dispatched on {new Date(alert.createdAt || Date.now()).toLocaleString()}
           </Text>
         </View>
+
+        {/* ── Broadcast Message Details ───────────────────────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardSectionLabel}>BROADCAST ADVISORY DETAILS</Text>
+          <Text style={styles.broadcastText}>
+            {alert.description && alert.description.trim()
+              ? alert.description
+              : 'Caution is advised on this highway corridor. Road safety authorities and traffic officers are monitoring flow.'}
+          </Text>
+        </View>
+
+        {/* ── Driver Action Recommendations ───────────────────────────────────── */}
+        <View style={styles.adviceCard}>
+          <View style={styles.adviceHeader}>
+            <Icon name="shield" size={15} color={colors.warning} />
+            <Text style={styles.adviceTitle}>Recommended Driver Protocol</Text>
+          </View>
+          <View style={styles.adviceList}>
+            <Text style={styles.adviceBullet}>
+              • Maintain safe following distance and adjust headlights if visibility is reduced.
+            </Text>
+            <Text style={styles.adviceBullet}>
+              • Avoid sudden braking on wet corridors, bridges, or unpaved shoulders.
+            </Text>
+            <Text style={styles.adviceBullet}>
+              • Follow hand signals and detour instructions from on-scene Ghana Police officers.
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Action Buttons ──────────────────────────────────────────────────── */}
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={styles.callPoliceBtn}
+            onPress={handleCallPolice}
+            activeOpacity={0.85}
+          >
+            <Icon name="phone" size={16} color="#ffffff" />
+            <Text style={styles.callPoliceBtnText}>Contact Police MTTD (18555)</Text>
+          </TouchableOpacity>
+
+          {onOpenMap && (
+            <TouchableOpacity
+              style={styles.viewOnMapBtn}
+              onPress={onOpenMap}
+              activeOpacity={0.85}
+            >
+              <Icon name="map" size={16} color={colors.primary} />
+              <Text style={styles.viewOnMapBtnText}>View on Live Radar Map</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={{ height: spacing.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -54,95 +165,215 @@ export default function AlertDetailsScreen({ alert, onBack }: AlertDetailsScreen
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxxl,
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   backBtn: {
-    marginBottom: 16,
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  backText: {
-    color: '#f59e0b',
-    fontWeight: '700',
-    fontSize: 14,
+  headerCopy: {
+    flex: 1,
+  },
+  headerTitle: {
+    ...typography.headline,
+    fontSize: 18,
+    color: colors.text,
+  },
+  headerSubtitle: {
+    ...typography.caption,
+    color: colors.textSubtle,
+    marginTop: 1,
+  },
+  shareBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Hero Card
+  heroCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+    ...shadows.card,
   },
   badgeRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
+    gap: 6,
+    marginBottom: spacing.sm,
   },
   severityBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    color: '#ef4444',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: radius.xs,
+  },
+  severityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  severityText: {
     fontSize: 10,
-    fontWeight: '900',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   typeBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    color: '#f59e0b',
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: radius.xs,
+  },
+  typeBadgeText: {
     fontSize: 10,
-    fontWeight: '900',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginBottom: 6,
-  },
-  location: {
-    color: '#f59e0b',
-    fontSize: 13,
     fontWeight: '700',
+    color: colors.textSubtle,
+  },
+  alertTitle: {
+    ...typography.title,
+    fontSize: 16,
+    color: colors.text,
     marginBottom: 4,
   },
-  date: {
-    color: '#64748b',
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  locationText: {
+    fontSize: 13,
+    color: colors.textSubtle,
+    fontWeight: '500',
+  },
+  timestampText: {
     fontSize: 11,
-    marginBottom: 20,
+    color: colors.textDisabled,
+    marginTop: 2,
   },
-  descCard: {
-    backgroundColor: '#1e293b',
-    padding: 18,
-    borderRadius: 16,
-    marginBottom: 16,
+
+  // Card
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+    ...shadows.card,
   },
-  descLabel: {
-    color: '#94a3b8',
+  cardSectionLabel: {
     fontSize: 11,
     fontWeight: '800',
-    textTransform: 'uppercase',
-    marginBottom: 6,
+    color: colors.textSubtle,
+    letterSpacing: 0.8,
+    marginBottom: spacing.sm,
   },
-  descText: {
-    color: '#ffffff',
-    fontSize: 14,
-    lineHeight: 22,
+  broadcastText: {
+    ...typography.body,
+    fontSize: 13,
+    color: colors.text,
+    lineHeight: 20,
   },
+
+  // Advisory Checklist Card
   adviceCard: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    padding: 16,
-    borderRadius: 16,
+    backgroundColor: colors.warningLight,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  adviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.sm,
   },
   adviceTitle: {
-    color: '#f59e0b',
-    fontWeight: '800',
+    ...typography.title,
     fontSize: 13,
-    marginBottom: 4,
+    color: colors.warning,
   },
-  adviceText: {
-    color: '#cbd5e1',
+  adviceList: {
+    gap: 6,
+  },
+  adviceBullet: {
     fontSize: 12,
-    lineHeight: 18,
+    color: colors.textMuted,
+    lineHeight: 17,
+  },
+
+  // Actions
+  actionsContainer: {
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  callPoliceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 13,
+    borderRadius: radius.md,
+    ...shadows.subtle,
+  },
+  callPoliceBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  viewOnMapBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.surface,
+    paddingVertical: 13,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  viewOnMapBtnText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  emptyWrap: {
+    padding: spacing.xxl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSubtle,
   },
 });

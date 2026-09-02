@@ -8,11 +8,17 @@ import {
   SafeAreaView,
   StatusBar,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { apiFetch } from '../services/api';
 import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
-export default function EmergencyScreen() {
+interface EmergencyScreenProps {
+  onBack?: () => void;
+}
+
+export default function EmergencyScreen({ onBack }: EmergencyScreenProps) {
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -42,75 +48,130 @@ export default function EmergencyScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.headerTitle}>Emergency Services (Ghana)</Text>
-        <Text style={styles.headerSubtitle}>Instant direct dial for Police, Fire, Ambulance & Hospitals</Text>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* ── App Bar / Header ─────────────────────────────────────────── */}
+        <View style={styles.header}>
+          {onBack && (
+            <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+              <Icon name="back" size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>Emergency Services</Text>
+            <Text style={styles.headerSubtitle}>
+              National Ghana hotlines & rapid dispatch direct dial
+            </Text>
+          </View>
+        </View>
 
-        {/* Toll-Free National Hotlines Banner */}
-        <View style={styles.nationalHotlineCard}>
-          <Text style={styles.hotlineHeader}>NATIONAL EMERGENCY TOLL-FREE NUMBERS</Text>
+        {/* ── Toll-Free Priority Hotlines Hero Card ────────────────────── */}
+        <View style={styles.hotlineHeroCard}>
+          <Text style={styles.hotlineHeader}>NATIONAL 24/7 TOLL-FREE NUMBERS</Text>
           <View style={styles.hotlineGrid}>
-            <TouchableOpacity style={styles.hotlineChip} onPress={() => makeCall('193')}>
-              <Icon name="ambulance" size={20} color="#ef4444" />
+            <TouchableOpacity
+              style={styles.hotlineChip}
+              onPress={() => makeCall('193')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.hotlineIconWrap, { backgroundColor: colors.googleRedLight }]}>
+                <Icon name="ambulance" size={20} color={colors.googleRed} />
+              </View>
               <Text style={styles.hotlineTitle}>Ambulance</Text>
-              <Text style={styles.hotlineNum}>193 / 112</Text>
+              <Text style={[styles.hotlineNum, { color: colors.googleRed }]}>193 / 112</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.hotlineChip} onPress={() => makeCall('18555')}>
-              <Icon name="police" size={20} color="#3b82f6" />
+            <TouchableOpacity
+              style={styles.hotlineChip}
+              onPress={() => makeCall('18555')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.hotlineIconWrap, { backgroundColor: colors.googleBlueLight }]}>
+                <Icon name="police" size={20} color={colors.googleBlue} />
+              </View>
               <Text style={styles.hotlineTitle}>Police MTTD</Text>
-              <Text style={styles.hotlineNum}>18555 / 191</Text>
+              <Text style={[styles.hotlineNum, { color: colors.googleBlue }]}>18555 / 191</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.hotlineChip} onPress={() => makeCall('192')}>
-              <Icon name="fire" size={20} color="#f97316" />
+            <TouchableOpacity
+              style={styles.hotlineChip}
+              onPress={() => makeCall('192')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.hotlineIconWrap, { backgroundColor: colors.hazardLight }]}>
+                <Icon name="fire" size={20} color={colors.hazard} />
+              </View>
               <Text style={styles.hotlineTitle}>Fire Service</Text>
-              <Text style={styles.hotlineNum}>192 / 112</Text>
+              <Text style={[styles.hotlineNum, { color: colors.hazard }]}>192 / 112</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Filter Categories */}
+        {/* ── Filter Categories ────────────────────────────────────────── */}
         <View style={styles.filterRow}>
-          {['ALL', 'HOSPITAL', 'POLICE', 'FIRE_AMBULANCE'].map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.filterBtn, selectedCategory === cat && styles.filterBtnActive]}
-              onPress={() => setSelectedCategory(cat)}
-            >
-              <Text style={[styles.filterText, selectedCategory === cat && styles.filterTextActive]}>
-                {cat.replace('_', ' & ')}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {['ALL', 'HOSPITAL', 'POLICE', 'FIRE_AMBULANCE'].map((cat) => {
+            const isActive = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.filterBtn, isActive && styles.filterBtnActive]}
+                onPress={() => setSelectedCategory(cat)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+                  {cat === 'ALL'
+                    ? 'All Units'
+                    : cat === 'FIRE_AMBULANCE'
+                    ? 'Fire & Amb'
+                    : cat.charAt(0) + cat.slice(1).toLowerCase()}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* Directory List */}
+        {/* ── Directory List ──────────────────────────────────────────── */}
         {loading ? (
-          <Text style={styles.loadingText}>Loading directory...</Text>
+          <View style={styles.centerWrap}>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={styles.loadingText}>Fetching emergency stations...</Text>
+          </View>
+        ) : filteredServices.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No emergency contacts found in this category.</Text>
+          </View>
         ) : (
           filteredServices.map((service) => (
             <View key={service.id} style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.categoryBadge}>{service.category}</Text>
-                <Text style={styles.regionText}>{service.region}</Text>
+                <View style={styles.categoryBadge}>
+                  <Text style={styles.categoryBadgeText}>{service.category}</Text>
+                </View>
+                <Text style={styles.regionText}>{service.region || 'Greater Accra'}</Text>
               </View>
 
               <Text style={styles.serviceName}>{service.name}</Text>
               <View style={styles.addressRow}>
-                <Icon name="location" size={12} color="#94a3b8" />
-                <Text style={styles.address}>{service.address}</Text>
+                <Icon name="location" size={14} color={colors.textTertiary} />
+                <Text style={styles.addressText}>{service.address}</Text>
               </View>
 
               <View style={styles.callRow}>
-                <TouchableOpacity style={styles.callButton} onPress={() => makeCall(service.phone)}>
-                  <Icon name="phone" size={14} color="#ffffff" />
+                <TouchableOpacity
+                  style={styles.callButton}
+                  onPress={() => makeCall(service.phone)}
+                  activeOpacity={0.85}
+                >
+                  <Icon name="phone" size={15} color="#ffffff" />
                   <Text style={styles.callButtonText}>Call {service.phone}</Text>
                 </TouchableOpacity>
 
                 {service.altPhone && (
-                  <TouchableOpacity style={styles.altCallButton} onPress={() => makeCall(service.altPhone)}>
+                  <TouchableOpacity
+                    style={styles.altCallButton}
+                    onPress={() => makeCall(service.altPhone)}
+                    activeOpacity={0.85}
+                  >
                     <Text style={styles.altCallButtonText}>Alt: {service.altPhone}</Text>
                   </TouchableOpacity>
                 )}
@@ -118,6 +179,8 @@ export default function EmergencyScreen() {
             </View>
           ))
         )}
+
+        <View style={{ height: spacing.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -126,166 +189,226 @@ export default function EmergencyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxxl,
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  headerCopy: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#172b4d',
+    ...typography.headline,
+    color: colors.textPrimary,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: '#667085',
-    marginBottom: 16,
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
-  nationalHotlineCard: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 18,
-    padding: 16,
+
+  // Hotline Hero Card
+  hotlineHeroCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#FECACA',
-    marginBottom: 20,
+    borderColor: colors.border,
+    marginBottom: spacing.lg,
+    ...shadows.card,
   },
   hotlineHeader: {
-    color: '#DC2626',
-    fontWeight: '900',
-    fontSize: 11,
-    letterSpacing: 1,
+    ...typography.label,
+    color: colors.textTertiary,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   hotlineGrid: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
   },
   hotlineChip: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 10,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: radius.md,
+    padding: spacing.md,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.border,
+  },
+  hotlineIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
   },
   hotlineTitle: {
-    color: '#172b4d',
-    fontSize: 11,
-    fontWeight: '800',
-    marginTop: 4,
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
   hotlineNum: {
-    color: '#DC2626',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
     marginTop: 2,
   },
+
+  // Filter Row
   filterRow: {
     flexDirection: 'row',
     gap: 6,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   filterBtn: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surface,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: radius.pill,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   filterBtnActive: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
   },
   filterText: {
-    color: '#64748B',
-    fontSize: 10,
-    fontWeight: '800',
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   filterTextActive: {
-    color: '#ffffff',
+    color: colors.primaryDark,
+    fontWeight: '700',
   },
-  loadingText: {
-    color: '#94A3B8',
-    textAlign: 'center',
-    padding: 20,
-  },
+
+  // Cards
   card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
+    ...shadows.card,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 6,
   },
   categoryBadge: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#10b981',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: radius.xs,
+  },
+  categoryBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primaryDark,
+    textTransform: 'uppercase',
   },
   regionText: {
-    color: '#94A3B8',
-    fontSize: 11,
+    ...typography.caption,
+    color: colors.textTertiary,
   },
   serviceName: {
-    color: '#172b4d',
-    fontWeight: '800',
+    ...typography.title,
     fontSize: 15,
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   addressRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
-  address: {
-    color: '#667085',
-    fontSize: 12,
+  addressText: {
+    ...typography.body,
+    fontSize: 13,
+    color: colors.textSecondary,
+    flex: 1,
   },
   callRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
   },
   callButton: {
     flex: 1,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.primary,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: radius.md,
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
+    flexDirection: 'row',
     gap: 6,
   },
   callButtonText: {
     color: '#ffffff',
-    fontWeight: '900',
+    fontWeight: '700',
     fontSize: 13,
   },
   altCallButton: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceVariant,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   altCallButtonText: {
-    color: '#475569',
-    fontWeight: '700',
+    color: colors.textSecondary,
+    fontWeight: '600',
     fontSize: 11,
+  },
+
+  // Loading & Empty
+  centerWrap: {
+    padding: spacing.xxxl,
+    alignItems: 'center',
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textTertiary,
+    marginTop: spacing.sm,
+  },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
 });

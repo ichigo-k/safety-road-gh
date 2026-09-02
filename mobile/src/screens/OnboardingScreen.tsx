@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, StatusBar, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface OnboardingScreenProps {
   onFinish: () => void;
@@ -7,19 +9,31 @@ interface OnboardingScreenProps {
 
 const slides = [
   {
-    icon: 'report',
-    title: 'Report Accidents & Hazards',
-    description: 'Capture exact GPS location coordinates and snap photographic evidence of road hazards or collisions directly to Ghana MTTD.',
+    number: '01',
+    icon: 'accident',
+    iconColor: colors.googleRed,
+    iconBg: colors.googleRedLight,
+    title: 'Report Incidents & Hazards',
+    description:
+      'Capture exact GPS coordinates and snap live evidence of collisions, potholes, and road dangers directly to Ghana Police MTTD.',
   },
   {
-    icon: 'emergency',
-    title: 'Instant Emergency Assistance',
-    description: 'Directly dial Ambulance (193), Police (18555), Fire Service (192), and discover nearby hospitals in Accra, Kumasi, and across Ghana.',
+    number: '02',
+    icon: 'ambulance',
+    iconColor: colors.googleBlue,
+    iconBg: colors.googleBlueLight,
+    title: 'Instant Emergency Response',
+    description:
+      'Direct 1-tap toll-free calling to Ambulance (193), Police (18555 / 112), and Fire Service (192) across all Ghana regions.',
   },
   {
-    icon: 'tips',
-    title: 'Live Road Alerts & Safety Tips',
-    description: 'Receive real-time traffic broadcast alerts from road authorities and access safety guidelines tailored for drivers, riders, and pedestrians.',
+    number: '03',
+    icon: 'map',
+    iconColor: colors.primary,
+    iconBg: colors.primaryLight,
+    title: 'Live Highway Radar & Alerts',
+    description:
+      'Explore active road warnings, hazard hotspots, traffic updates, and safety manuals verified by road safety authorities.',
   },
 ];
 
@@ -36,45 +50,46 @@ export default function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
 
   const currentSlide = slides[currentIndex];
 
-  const illustration = currentSlide.icon === 'report'
-    ? require('../../assets/onboarding/undraw_motion-alert_pr1a.svg')
-    : currentSlide.icon === 'emergency'
-      ? require('../../assets/onboarding/undraw_phone-call_ov3z.svg')
-      : require('../../assets/onboarding/undraw_smartwatch-map_3u18.svg');
-
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f4f8f5" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.content}>
-        <TouchableOpacity style={styles.skipBtn} onPress={onFinish}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
+        {/* Top bar with Skip button */}
+        <View style={styles.topRow}>
+          <TouchableOpacity style={styles.skipBtn} onPress={onFinish} activeOpacity={0.7}>
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
 
-        <View style={styles.slideContainer}>
-          <View style={styles.iconCircle}>
-            <Image source={illustration} style={styles.illustration} resizeMode="contain" />
+        {/* Slide Body */}
+        <View style={styles.slideArea}>
+          <View style={[styles.iconContainer, { backgroundColor: currentSlide.iconBg }]}>
+            <Icon name={currentSlide.icon} size={36} color={currentSlide.iconColor} />
           </View>
-
-          <Text style={styles.title}>{currentSlide.title}</Text>
-          <Text style={styles.description}>{currentSlide.description}</Text>
+          <Text style={styles.slideStep}>FEATURE {currentSlide.number}</Text>
+          <Text style={styles.slideTitle}>{currentSlide.title}</Text>
+          <Text style={styles.slideDesc}>{currentSlide.description}</Text>
         </View>
 
-        {/* Indicators */}
-        <View style={styles.indicatorContainer}>
-          {slides.map((_, i) => (
-            <View
-              key={i}
-              style={[styles.indicator, i === currentIndex && styles.activeIndicator]}
-            />
-          ))}
+        {/* Bottom Navigation Area */}
+        <View style={styles.bottomArea}>
+          <View style={styles.dotsRow}>
+            {slides.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  i === currentIndex && [styles.dotActive, { backgroundColor: colors.primary }],
+                ]}
+              />
+            ))}
+          </View>
+          <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.85}>
+            <Text style={styles.nextBtnText}>
+              {currentIndex === slides.length - 1 ? 'Get Started' : 'Next Step'}
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Action Button */}
-        <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-          <Text style={styles.nextBtnText}>
-            {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
-          </Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -83,77 +98,95 @@ export default function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f8f5',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
-    padding: 24,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
     justifyContent: 'space-between',
   },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
   skipBtn: {
-    alignSelf: 'flex-end',
-    padding: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   skipText: {
-    color: '#6d7d73',
+    ...typography.caption,
+    fontSize: 13,
     fontWeight: '700',
-    fontSize: 14,
+    color: colors.textSecondary,
   },
-  slideContainer: {
+  slideArea: {
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    paddingBottom: spacing.xl,
   },
-  iconCircle: {
+  iconContainer: {
     width: 80,
     height: 80,
-    justifyContent: 'center',
+    borderRadius: radius.pill,
     alignItems: 'center',
-    marginBottom: 30,
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+    ...shadows.card,
   },
-  illustration: {
-    width: 160,
-    height: 130,
+  slideStep: {
+    ...typography.label,
+    color: colors.primaryDark,
+    marginBottom: 6,
   },
-  iconText: {
-    fontSize: 52,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#102018',
+  slideTitle: {
+    ...typography.headline,
+    fontSize: 22,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
-  description: {
-    fontSize: 14,
-    color: '#6d7d73',
+  slideDesc: {
+    ...typography.body,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+    paddingHorizontal: spacing.md,
   },
-  indicatorContainer: {
+  bottomArea: {
+    gap: spacing.xl,
+  },
+  dotsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
   },
-  indicator: {
+  dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#dce5de',
+    backgroundColor: colors.border,
   },
-  activeIndicator: {
+  dotActive: {
     width: 24,
-    backgroundColor: '#2fdf76',
+    height: 8,
+    borderRadius: 4,
   },
   nextBtn: {
-    backgroundColor: '#2fdf76',
-    paddingVertical: 16,
-    borderRadius: 14,
+    backgroundColor: colors.primary,
+    height: 50,
+    borderRadius: radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.card,
   },
   nextBtnText: {
-    color: '#0a3320',
-    fontWeight: '900',
-    fontSize: 16,
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

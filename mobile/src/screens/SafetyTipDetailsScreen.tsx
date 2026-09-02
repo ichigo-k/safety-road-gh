@@ -1,5 +1,15 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  SafeAreaView,
+  StatusBar,
+  TouchableOpacity,
+} from 'react-native';
+import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface SafetyTipDetailsScreenProps {
   tip: any;
@@ -10,36 +20,58 @@ export default function SafetyTipDetailsScreen({ tip, onBack }: SafetyTipDetails
   if (!tip) {
     return (
       <SafeAreaView style={styles.container}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={{ color: '#fff', padding: 20 }}>No safety tip selected.</Text>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+            <Icon name="back" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Safety Guide</Text>
+        </View>
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyText}>No guide selected.</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Back to Safety Tips</Text>
-        </TouchableOpacity>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+            <Icon name="back" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>Driver Safety Guide</Text>
+            <Text style={styles.headerSubtitle}>
+              National Road Safety Authority (NRSA) Publication
+            </Text>
+          </View>
+        </View>
 
-        <Text style={styles.categoryBadge}>{tip.category} GUIDE</Text>
+        <View style={styles.categoryBadge}>
+          <Text style={styles.categoryBadgeText}>{tip.category} SAFETY MANUAL</Text>
+        </View>
+
         <Text style={styles.title}>{tip.title}</Text>
-        <Text style={styles.date}>Published by Ghana Road Safety Authority</Text>
+        <Text style={styles.date}>Verified for Ghana Highway Compliance</Text>
 
         <View style={styles.contentCard}>
           <Text style={styles.contentText}>{tip.content}</Text>
         </View>
 
         <View style={styles.reminderCard}>
-          <Text style={styles.reminderTitle}>🛡️ Remember:</Text>
+          <View style={styles.reminderHeader}>
+            <Icon name="shield" size={16} color={colors.primary} />
+            <Text style={styles.reminderTitle}>Citizen Safety Pledge</Text>
+          </View>
           <Text style={styles.reminderText}>
-            Road safety is a shared responsibility. Obey all traffic signals, avoid driving under the influence of alcohol or fatigue, and report hazardous road conditions promptly.
+            Road safety is a shared responsibility across Ghana. Always wear seatbelts, obey speed limits, stay vigilant in wet conditions, and report hazards promptly.
           </Text>
         </View>
+
+        <View style={{ height: spacing.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -48,70 +80,110 @@ export default function SafetyTipDetailsScreen({ tip, onBack }: SafetyTipDetails
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxxl,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   backBtn: {
-    marginBottom: 16,
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  backText: {
-    color: '#f59e0b',
-    fontWeight: '700',
-    fontSize: 14,
+  headerCopy: {
+    flex: 1,
+  },
+  headerTitle: {
+    ...typography.headline,
+    color: colors.textPrimary,
+  },
+  headerSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   categoryBadge: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#60a5fa',
-    backgroundColor: 'rgba(96, 165, 250, 0.15)',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: radius.xs,
     alignSelf: 'flex-start',
-    marginBottom: 10,
+    marginBottom: spacing.sm,
+  },
+  categoryBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primaryDark,
+    textTransform: 'uppercase',
   },
   title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginBottom: 6,
+    ...typography.headline,
+    color: colors.textPrimary,
+    marginBottom: 4,
   },
   date: {
-    color: '#64748b',
-    fontSize: 11,
-    marginBottom: 20,
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginBottom: spacing.lg,
   },
   contentCard: {
-    backgroundColor: '#1e293b',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 16,
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
+    borderRadius: radius.lg,
+    marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
+    ...shadows.card,
   },
   contentText: {
-    color: '#ffffff',
-    fontSize: 15,
+    ...typography.body,
+    fontSize: 14,
+    color: colors.textPrimary,
     lineHeight: 24,
   },
   reminderCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    padding: 16,
-    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: colors.primaryContainer,
+  },
+  reminderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
   },
   reminderTitle: {
-    color: '#60a5fa',
-    fontWeight: '800',
-    fontSize: 13,
-    marginBottom: 4,
+    ...typography.title,
+    fontSize: 14,
+    color: colors.primaryDark,
   },
   reminderText: {
-    color: '#cbd5e1',
-    fontSize: 12,
+    ...typography.body,
+    fontSize: 13,
+    color: colors.textSecondary,
     lineHeight: 18,
+  },
+  emptyWrap: {
+    padding: spacing.xxl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
 });

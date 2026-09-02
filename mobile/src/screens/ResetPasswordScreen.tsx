@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
+  Alert,
+} from 'react-native';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface ResetPasswordScreenProps {
   email: string;
@@ -7,73 +17,85 @@ interface ResetPasswordScreenProps {
 }
 
 export default function ResetPasswordScreen({ email, onSuccess }: ResetPasswordScreenProps) {
-  const [code, setCode] = useState('123456');
+  const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleReset = () => {
     if (!code || !newPassword) {
-      Alert.alert('Error', 'Please enter verification code and new password.');
+      Alert.alert('Required', 'Please enter verification code and new password.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
+      Alert.alert('Mismatch', 'Passwords do not match.');
       return;
     }
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
       onSuccess();
-    }, 1000);
+    }, 800);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.content}>
         <Text style={styles.title}>Reset Password</Text>
-        <Text style={styles.subtitle}>Enter the 6-digit code sent to {email} and choose a new password.</Text>
+        <Text style={styles.subtitle}>
+          Enter the 6-digit code sent to <Text style={styles.highlight}>{email}</Text> and choose
+          a new password.
+        </Text>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>6-Digit Verification Code</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="123456"
-            placeholderTextColor="#64748b"
-            keyboardType="number-pad"
-            value={code}
-            onChangeText={setCode}
-          />
+        <View style={styles.card}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>6-DIGIT CODE</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="123456"
+              placeholderTextColor={colors.textDisabled}
+              keyboardType="number-pad"
+              value={code}
+              onChangeText={setCode}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>NEW PASSWORD</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              placeholderTextColor={colors.textDisabled}
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>CONFIRM NEW PASSWORD</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              placeholderTextColor={colors.textDisabled}
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleReset}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? 'Resetting Password...' : 'Reset Password'}
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>New Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="#64748b"
-            secureTextEntry
-            value={newPassword}
-            onChangeText={setNewPassword}
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Confirm New Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="#64748b"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
-        </View>
-
-        <TouchableOpacity style={styles.button} onPress={handleReset} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Resetting Password...' : 'Reset Password Now'}</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -82,53 +104,64 @@ export default function ResetPasswordScreen({ email, onSuccess }: ResetPasswordS
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
   },
   content: {
-    padding: 24,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxl,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginBottom: 6,
+    ...typography.headline,
+    color: colors.textPrimary,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 13,
-    color: '#94a3b8',
-    marginBottom: 24,
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.xl,
     lineHeight: 20,
   },
+  highlight: {
+    color: colors.primaryDark,
+    fontWeight: '700',
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.card,
+  },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#cbd5e1',
+    ...typography.label,
+    color: colors.textTertiary,
     marginBottom: 6,
-    textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surfaceVariant,
     borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 12,
-    paddingHorizontal: 14,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    color: '#ffffff',
-    fontSize: 15,
+    color: colors.textPrimary,
+    fontSize: 14,
   },
   button: {
-    backgroundColor: '#f59e0b',
-    paddingVertical: 15,
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: radius.md,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
+    ...shadows.card,
   },
   buttonText: {
-    color: '#0f172a',
-    fontWeight: '900',
-    fontSize: 15,
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

@@ -1,34 +1,116 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View, SafeAreaView, StatusBar, Image, Animated, ActivityIndicator } from 'react-native';
+import {
+  Animated,
+  Easing,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
-  const scale = useRef(new Animated.Value(0.86)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    // Logo entrance animation
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 420, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, friction: 7, tension: 55, useNativeDriver: true }),
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 6,
+        tension: 60,
+        useNativeDriver: true,
+      }),
     ]).start();
-    const timer = setTimeout(() => {
-      onFinish();
-    }, 2000);
+
+    // Text fade in
+    setTimeout(() => {
+      Animated.timing(textOpacity, {
+        toValue: 1,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }, 300);
+
+    // Pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.25,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    const timer = setTimeout(onFinish, 2200);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
       <View style={styles.content}>
-        <Animated.View style={{ opacity, transform: [{ scale }] }}>
-          <Image source={require('../../assets/brand/safety-road-logo.png')} style={styles.logo} resizeMode="contain" />
+        {/* Brand Shield Mark */}
+        <Animated.View
+          style={[
+            styles.logoWrap,
+            { opacity: logoOpacity, transform: [{ scale: logoScale }] },
+          ]}
+        >
+          <Animated.View
+            style={[
+              styles.pulseRing,
+              {
+                transform: [{ scale: pulseAnim }],
+                opacity: pulseAnim.interpolate({
+                  inputRange: [1, 1.25],
+                  outputRange: [0.35, 0],
+                }),
+              },
+            ]}
+          />
+          <View style={styles.shield}>
+            <Icon name="shield" size={40} color="#ffffff" />
+          </View>
         </Animated.View>
-        <View style={styles.loader}><ActivityIndicator size="small" color="#0f6cbd" /></View>
+
+        {/* Brand Typography */}
+        <Animated.View style={[styles.textBlock, { opacity: textOpacity }]}>
+          <Text style={styles.appName}>Safety Road</Text>
+          <Text style={styles.country}>GHANA</Text>
+          <Text style={styles.subtext}>Citizen Road Radar & Emergency Network</Text>
+        </Animated.View>
       </View>
+
+      {/* Footer Tagline */}
+      <Animated.View style={[styles.footer, { opacity: textOpacity }]}>
+        <Text style={styles.footerText}>Ghana MTTD & Citizen Safety Collaboration</Text>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -36,22 +118,63 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
   },
-  logo: {
-    width: 190,
-    height: 190,
-    // The supplied reference image has a large transparent/white canvas on its right.
-    marginLeft: -42,
-  },
-  loader: {
-    marginTop: 22,
+  logoWrap: {
+    width: 100,
+    height: 100,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.primaryLight,
+  },
+  shield: {
+    width: 72,
+    height: 72,
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.floating,
+  },
+  textBlock: {
+    alignItems: 'center',
+  },
+  appName: {
+    ...typography.display,
+    fontSize: 28,
+    color: colors.textPrimary,
+  },
+  country: {
+    ...typography.label,
+    fontSize: 12,
+    color: colors.primaryDark,
+    letterSpacing: 3,
+    marginTop: 4,
+  },
+  subtext: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
+  footer: {
+    paddingBottom: spacing.xxl,
+    alignItems: 'center',
+  },
+  footerText: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textTertiary,
   },
 });

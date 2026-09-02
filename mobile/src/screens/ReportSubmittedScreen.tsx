@@ -1,37 +1,49 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface ReportSubmittedScreenProps {
   onGoToTracking: () => void;
   onGoHome: () => void;
 }
 
-export default function ReportSubmittedScreen({ onGoToTracking, onGoHome }: ReportSubmittedScreenProps) {
+export default function ReportSubmittedScreen({
+  onGoToTracking,
+  onGoHome,
+}: ReportSubmittedScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <Text style={styles.iconText}>🎉</Text>
+          <Icon name="check" size={38} color={colors.primary} />
         </View>
 
-        <Text style={styles.title}>Report Submitted Successfully!</Text>
+        <Text style={styles.title}>Incident Transmitted</Text>
         <Text style={styles.subtitle}>
-          Your report has been logged and transmitted to Ghana MTTD Command Center & Emergency Services for verification.
+          Your report has been logged and transmitted to Ghana MTTD Command Center and added to the
+          live road radar.
         </Text>
 
         <View style={styles.refCard}>
-          <Text style={styles.refLabel}>OFFICIAL REPORT REFERENCE ID</Text>
-          <Text style={styles.refCode}>SR-GH-2026-9482</Text>
-          <Text style={styles.refHint}>You can track updates to this report under 'My Reports'</Text>
+          <Text style={styles.refLabel}>OFFICIAL INCIDENT TELEMETRY</Text>
+          <Text style={styles.refCode}>QUEUED FOR VERIFICATION</Text>
+          <Text style={styles.refHint}>
+            You can track real-time verification and officer dispatch in the Reports tab.
+          </Text>
         </View>
 
-        <TouchableOpacity style={styles.primaryBtn} onPress={onGoToTracking}>
-          <Text style={styles.primaryBtnText}>Track My Report Status</Text>
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={onGoToTracking}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.primaryBtnText}>Track Report Status</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryBtn} onPress={onGoHome}>
-          <Text style={styles.secondaryBtnText}>Return to Home Dashboard</Text>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={onGoHome} activeOpacity={0.85}>
+          <Text style={styles.secondaryBtnText}>Return to Home Radar</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -41,94 +53,91 @@ export default function ReportSubmittedScreen({ onGoToTracking, onGoHome }: Repo
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
-    padding: 24,
+    padding: spacing.xl,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderWidth: 2,
-    borderColor: '#f59e0b',
+    width: 76,
+    height: 76,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  iconText: {
-    fontSize: 42,
+    marginBottom: spacing.xl,
+    ...shadows.card,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#ffffff',
+    ...typography.headline,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 13,
-    color: '#cbd5e1',
+    ...typography.body,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 28,
+    marginBottom: spacing.xl,
+    maxWidth: 320,
   },
   refCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 18,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
     alignItems: 'center',
     width: '100%',
-    marginBottom: 28,
+    marginBottom: spacing.xxl,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
+    ...shadows.card,
   },
   refLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#94a3b8',
-    letterSpacing: 1,
-    marginBottom: 4,
+    ...typography.label,
+    color: colors.textTertiary,
+    marginBottom: 6,
   },
   refCode: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#f59e0b',
-    letterSpacing: 2,
+    ...typography.title,
+    fontSize: 15,
+    color: colors.primaryDark,
+    letterSpacing: 0.5,
   },
   refHint: {
-    fontSize: 11,
-    color: '#64748b',
+    ...typography.caption,
+    color: colors.textSecondary,
     marginTop: 6,
+    textAlign: 'center',
   },
   primaryBtn: {
-    backgroundColor: '#f59e0b',
-    paddingVertical: 15,
-    borderRadius: 14,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: radius.md,
     width: '100%',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
+    ...shadows.card,
   },
   primaryBtnText: {
-    color: '#0f172a',
-    fontWeight: '900',
-    fontSize: 15,
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   secondaryBtn: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: radius.md,
     width: '100%',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
   },
   secondaryBtnText: {
-    color: '#ffffff',
+    color: colors.textPrimary,
     fontWeight: '700',
     fontSize: 14,
   },

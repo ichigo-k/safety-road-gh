@@ -1,5 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface ResetSuccessScreenProps {
   onBackToLogin: () => void;
@@ -8,16 +10,19 @@ interface ResetSuccessScreenProps {
 export default function ResetSuccessScreen({ onBackToLogin }: ResetSuccessScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <Text style={styles.iconText}>✅</Text>
+          <Icon name="check" size={36} color={colors.primary} />
         </View>
 
-        <Text style={styles.title}>Password Reset Successful!</Text>
-        <Text style={styles.subtitle}>Your Safety Road GH account password has been updated securely. You can now sign in with your new password.</Text>
+        <Text style={styles.title}>Password Reset Complete</Text>
+        <Text style={styles.subtitle}>
+          Your citizen account password has been updated securely. You can now sign in to access the
+          Ghana Road Safety radar.
+        </Text>
 
-        <TouchableOpacity style={styles.button} onPress={onBackToLogin}>
+        <TouchableOpacity style={styles.button} onPress={onBackToLogin} activeOpacity={0.85}>
           <Text style={styles.buttonText}>Sign In Now</Text>
         </TouchableOpacity>
       </View>
@@ -28,54 +33,50 @@ export default function ResetSuccessScreen({ onBackToLogin }: ResetSuccessScreen
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
-    padding: 24,
+    padding: spacing.xxl,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 2,
-    borderColor: '#10b981',
+    width: 72,
+    height: 72,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  iconText: {
-    fontSize: 40,
+    marginBottom: spacing.xl,
+    ...shadows.card,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#ffffff',
+    ...typography.headline,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 13,
-    color: '#94a3b8',
+    ...typography.body,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 32,
-    maxWidth: 300,
+    marginBottom: spacing.xxxl,
+    maxWidth: 320,
   },
   button: {
-    backgroundColor: '#f59e0b',
-    paddingVertical: 15,
-    paddingHorizontal: 32,
-    borderRadius: 14,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xxl,
+    borderRadius: radius.md,
     width: '100%',
     alignItems: 'center',
+    ...shadows.card,
   },
   buttonText: {
-    color: '#0f172a',
-    fontWeight: '900',
-    fontSize: 15,
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

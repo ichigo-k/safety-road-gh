@@ -1,6 +1,13 @@
-import React from 'react';
-import MapView, { Marker, Callout, PROVIDER_DEFAULT } from 'react-native-maps';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Platform } from 'react-native';
+import MapView, {
+  Circle,
+  Marker,
+  Callout,
+  PROVIDER_DEFAULT,
+} from 'react-native-maps';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface MapMarkerData {
   id: string;
@@ -11,17 +18,79 @@ export interface MapMarkerData {
   type?: string;
   status?: string;
   color?: string;
+  /** For clusters: how many reports are in this spot */
+  clusterCount?: number;
 }
 
-interface MapViewComponentProps {
-  region: { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
+export interface MapViewComponentProps {
+  region: {
+    latitude: number;
+    longitude: number;
+    latitudeDelta: number;
+    longitudeDelta: number;
+  };
   markers?: MapMarkerData[];
   onMarkerPress?: (marker: MapMarkerData) => void;
   style?: any;
-  onRegionChange?: (region: { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number }) => void;
+  onRegionChange?: (region: {
+    latitude: number;
+    longitude: number;
+    latitudeDelta: number;
+    longitudeDelta: number;
+  }) => void;
   draggablePin?: { latitude: number; longitude: number };
   onPinDragEnd?: (coords: { latitude: number; longitude: number }) => void;
 }
+
+// ─── Hotspot sizing & color ───────────────────────────────────────────────────
+function hotspotStyle(marker: MapMarkerData): {
+  radius: number;
+  fillColor: string;
+  strokeColor: string;
+  strokeWidth: number;
+} {
+  const count = marker.clusterCount ?? 1;
+  const isResolved = marker.status === 'RESOLVED';
+
+  if (isResolved) {
+    return {
+      radius: 80 + Math.min(count, 6) * 20,
+      fillColor: 'rgba(34,197,94,0.30)',
+      strokeColor: 'rgba(34,197,94,0.70)',
+      strokeWidth: 1.5,
+    };
+  }
+
+  const intensity = Math.min(count / 8, 1);
+
+  if (marker.type === 'ACCIDENT') {
+    const base = 220 + Math.round(intensity * 35);
+    const g = Math.round(50 - intensity * 40);
+    const b = Math.round(50 - intensity * 40);
+    const opacity = 0.35 + intensity * 0.40;
+    return {
+      radius: 120 + intensity * 380,
+      fillColor: `rgba(${base},${g},${b},${opacity.toFixed(2)})`,
+      strokeColor: `rgba(${base},${g},${b},0.85)`,
+      strokeWidth: count > 3 ? 0 : 1.5,
+    };
+  } else {
+    const fillColor = intensity > 0.5
+      ? `rgba(249,115,22,${(0.35 + intensity * 0.40).toFixed(2)})`
+      : `rgba(245,158,11,${(0.30 + intensity * 0.35).toFixed(2)})`;
+    const strokeColor = intensity > 0.5
+      ? 'rgba(249,115,22,0.80)'
+      : 'rgba(245,158,11,0.75)';
+    return {
+      radius: 100 + intensity * 320,
+      fillColor,
+      strokeColor,
+      strokeWidth: count > 3 ? 0 : 1.5,
+    };
+  }
+}
+
+// ─── Native Map Component ─────────────────────────────────────────────────────
 
 export default function MapViewComponent({
   region,
@@ -32,53 +101,270 @@ export default function MapViewComponent({
   draggablePin,
   onPinDragEnd,
 }: MapViewComponentProps) {
+  // Allow tracksViewChanges for initial render cycle so custom dots render
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+  useEffect(() => {
+    // Stop tracking after 1.2s to optimize map FPS
+    const timer = setTimeout(() => {
+      setTracksViewChanges(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [markers]);
+
+  // Separate incident markers from user/emergency markers
+  const { incidentMarkers, otherMarkers } = useMemo(() => {
+    const incident: MapMarkerData[] = [];
+    const other: MapMarkerData[] = [];
+    markers.forEach((m) => {
+      if (m.type === 'ACCIDENT' || m.type === 'HAZARD') {
+        incident.push(m);
+      } else {
+        other.push(m);
+      }
+    });
+    return { incidentMarkers: incident, otherMarkers: other };
+  }, [markers]);
+
   return (
     <MapView
       provider={PROVIDER_DEFAULT}
-      style={style}
+      style={style ?? StyleSheet.absoluteFill}
       initialRegion={region}
+      region={region}
       mapType="standard"
+      showsUserLocation={false}
       showsCompass
-      showsScale
-      showsBuildings
+      showsScale={false}
+      showsBuildings={true}
       loadingEnabled
       onRegionChangeComplete={(r) => onRegionChange?.(r)}
     >
-      {markers.map((m) => (
+      {/* ── Hotspot circles ────────────────────────────────────────────── */}
+      {incidentMarkers.map((m) => {
+        const hs = hotspotStyle(m);
+        return (
+          <Circle
+            key={`circle-${m.id}`}
+            center={{ latitude: m.latitude, longitude: m.longitude }}
+            radius={hs.radius}
+            fillColor={hs.fillColor}
+            strokeColor={hs.strokeColor}
+            strokeWidth={hs.strokeWidth}
+            zIndex={1}
+          />
+        );
+      })}
+
+      {/* ── Incident markers (dot on top of each circle) ─────────────────── */}
+      {incidentMarkers.map((m) => (
         <Marker
-          key={m.id}
+          key={`marker-${m.id}`}
           coordinate={{ latitude: m.latitude, longitude: m.longitude }}
-          pinColor={m.color || (m.type === 'ACCIDENT' ? '#d95555' : '#e8a126')}
           onPress={() => onMarkerPress?.(m)}
-          tracksViewChanges={false}
+          tracksViewChanges={tracksViewChanges}
+          zIndex={2}
+          anchor={{ x: 0.5, y: 0.5 }}
         >
+          {/* Custom dot — white ring + colored fill */}
+          <View
+            style={[
+              styles.dot,
+              { backgroundColor: m.color ?? (m.type === 'ACCIDENT' ? '#dc2626' : '#f97316') },
+            ]}
+          />
+
           <Callout onPress={() => onMarkerPress?.(m)}>
             <View style={styles.callout}>
-              <Text style={styles.calloutType}>{m.type || 'INCIDENT'}</Text>
-              <Text style={styles.calloutTitle}>{m.title}</Text>
-              {m.locationName && <Text style={styles.calloutLocation}>{m.locationName}</Text>}
-              {m.status && <Text style={styles.calloutStatus}>{m.status}</Text>}
+              <Text
+                style={[
+                  styles.calloutType,
+                  { color: m.type === 'ACCIDENT' ? '#dc2626' : '#d97706' },
+                ]}
+              >
+                {m.clusterCount && m.clusterCount > 1
+                  ? `${m.clusterCount} incidents`
+                  : m.type ?? 'INCIDENT'}
+              </Text>
+              <Text style={styles.calloutTitle} numberOfLines={2}>
+                {m.title}
+              </Text>
+              {m.locationName ? (
+                <Text style={styles.calloutLocation} numberOfLines={1}>
+                  {m.locationName}
+                </Text>
+              ) : null}
+              {m.status ? (
+                <View
+                  style={[
+                    styles.calloutStatusPill,
+                    m.status === 'RESOLVED' ? styles.pillResolved : styles.pillPending,
+                  ]}
+                >
+                  <Text style={styles.calloutStatusText}>{m.status}</Text>
+                </View>
+              ) : null}
             </View>
           </Callout>
         </Marker>
       ))}
 
+      {/* ── Emergency service markers (blue pin) ────────────────────────── */}
+      {otherMarkers
+        .filter((m) => m.type === 'EMERGENCY')
+        .map((m) => (
+          <Marker
+            key={`svc-${m.id}`}
+            coordinate={{ latitude: m.latitude, longitude: m.longitude }}
+            onPress={() => onMarkerPress?.(m)}
+            tracksViewChanges={tracksViewChanges}
+            zIndex={3}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View style={styles.svcDot} />
+            <Callout>
+              <View style={styles.callout}>
+                <Text style={[styles.calloutType, { color: '#1d4ed8' }]}>EMERGENCY</Text>
+                <Text style={styles.calloutTitle}>{m.title}</Text>
+                {m.locationName ? (
+                  <Text style={styles.calloutLocation}>{m.locationName}</Text>
+                ) : null}
+              </View>
+            </Callout>
+          </Marker>
+        ))}
+
+      {/* ── User location dot ────────────────────────────────────────────── */}
+      {otherMarkers
+        .filter((m) => m.type === 'USER')
+        .map((m) => (
+          <Marker
+            key="user-loc"
+            coordinate={{ latitude: m.latitude, longitude: m.longitude }}
+            tracksViewChanges={tracksViewChanges}
+            zIndex={10}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View style={styles.userOuter}>
+              <View style={styles.userInner} />
+            </View>
+          </Marker>
+        ))}
+
+      {/* ── Draggable location picker pin ────────────────────────────────── */}
       {draggablePin && (
         <Marker
           coordinate={draggablePin}
           draggable
           onDragEnd={(e) => onPinDragEnd?.(e.nativeEvent.coordinate)}
-          pinColor="#17b85a"
-        />
+          tracksViewChanges={tracksViewChanges}
+          zIndex={10}
+          anchor={{ x: 0.5, y: 1 }}
+        >
+          <View style={styles.pickerPin}>
+            <View style={styles.pickerPinDot} />
+          </View>
+        </Marker>
       )}
     </MapView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  callout: { minWidth: 140, padding: 4 },
-  calloutType: { color: '#17b85a', fontSize: 9, fontWeight: '900', letterSpacing: 0.9 },
-  calloutTitle: { color: '#102018', fontSize: 13, fontWeight: '900', marginTop: 4 },
-  calloutLocation: { color: '#6d7d73', fontSize: 10, marginTop: 2 },
-  calloutStatus: { color: '#0e7a3f', fontSize: 9, fontWeight: '900', marginTop: 6 },
+  dot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2.5,
+    borderColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  svcDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#1d4ed8',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    elevation: 3,
+  },
+  userOuter: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(37,99,235,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(37,99,235,0.40)',
+  },
+  userInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2563eb',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+  },
+  pickerPin: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(11,122,70,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerPinDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#0B7A46',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  callout: {
+    minWidth: 160,
+    maxWidth: 220,
+    padding: 10,
+    gap: 3,
+  },
+  calloutType: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  calloutTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111111',
+  },
+  calloutLocation: {
+    fontSize: 11,
+    color: '#555555',
+    marginTop: 2,
+  },
+  calloutStatusPill: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  pillResolved: { backgroundColor: '#dcfce7' },
+  pillPending: { backgroundColor: '#fef3c7' },
+  calloutStatusText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
 });

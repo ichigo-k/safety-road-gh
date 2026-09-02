@@ -10,10 +10,10 @@ import {
   Alert,
   SafeAreaView,
   StatusBar,
-  Image,
 } from 'react-native';
 import { apiFetch, saveAuthToken, saveUserData } from '../services/api';
 import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: any) => void;
@@ -32,26 +32,21 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
     if (loading) return;
     setErrorMessage('');
     if (!email || !password || (!isLogin && !name)) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert('Missing Fields', 'Please complete all required fields to continue.');
       return;
     }
-
     setLoading(true);
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
-      const body = isLogin ? { email, password } : { name, email, password, phone, role: 'CITIZEN' };
-
-      const res = await apiFetch(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-
+      const body = isLogin
+        ? { email: email.trim(), password }
+        : { name: name.trim(), email: email.trim(), password, phone: phone.trim(), role: 'CITIZEN' };
+      const res = await apiFetch(endpoint, { method: 'POST', body: JSON.stringify(body) });
       await saveAuthToken(res.token);
       await saveUserData(res.user);
-
       onLoginSuccess(res.user);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Check your credentials or network');
+      setErrorMessage(err.message || 'Check your credentials or internet connection.');
     } finally {
       setLoading(false);
     }
@@ -59,41 +54,48 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f4f8f5" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Branding Header */}
-        <View style={styles.header}>
-          <Image source={require('../../assets/onboarding/undraw_secure-login_m11a.svg')} style={styles.illustration} resizeMode="contain" />
-          <Text style={styles.title}>{isLogin ? 'Welcome back' : 'Create your account'}</Text>
-          <Text style={styles.subtitle}>
-            Ghana Road Accident & Hazard Reporting Mobile Network
-          </Text>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        {/* ── Brand Hero ─────────────────────────────────────────────── */}
+        <View style={styles.brandSection}>
+          <View style={styles.brandMark}>
+            <Icon name="shield" size={34} color="#ffffff" />
+          </View>
+          <Text style={styles.appName}>Safety Road GH</Text>
+          <Text style={styles.appRegion}>Ghana Road Safety & Citizen Radar</Text>
         </View>
 
-        {/* Form Card */}
-        <View style={styles.card}>
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[styles.tab, isLogin && styles.activeTab]}
-              onPress={() => setIsLogin(true)}
-            >
-              <Text style={[styles.tabText, isLogin && styles.activeTabText]}>Sign In</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, !isLogin && styles.activeTab]}
-              onPress={() => setIsLogin(false)}
-            >
-              <Text style={[styles.tabText, !isLogin && styles.activeTabText]}>Register</Text>
-            </TouchableOpacity>
-          </View>
+        {/* ── Tab Switcher ───────────────────────────────────────────── */}
+        <View style={styles.tabSwitcher}>
+          <TouchableOpacity
+            style={[styles.tabOption, isLogin && styles.tabOptionActive]}
+            onPress={() => setIsLogin(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabOptionText, isLogin && styles.tabOptionTextActive]}>
+              Sign In
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabOption, !isLogin && styles.tabOptionActive]}
+            onPress={() => setIsLogin(false)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabOptionText, !isLogin && styles.tabOptionTextActive]}>
+              Create Account
+            </Text>
+          </TouchableOpacity>
+        </View>
 
+        {/* ── Fields Card ────────────────────────────────────────────── */}
+        <View style={styles.card}>
           {!isLogin && (
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name</Text>
+              <Text style={styles.label}>FULL NAME</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Kwame Mensah"
-                placeholderTextColor="#a2b0a7"
+                placeholderTextColor={colors.textDisabled}
                 value={name}
                 onChangeText={setName}
               />
@@ -101,11 +103,11 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           )}
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
+            <Text style={styles.label}>EMAIL ADDRESS</Text>
             <TextInput
               style={styles.input}
               placeholder="user@example.com"
-              placeholderTextColor="#a2b0a7"
+              placeholderTextColor={colors.textDisabled}
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
@@ -115,11 +117,11 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
           {!isLogin && (
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Ghana Phone Number</Text>
+              <Text style={styles.label}>GHANA MOBILE NUMBER</Text>
               <TextInput
                 style={styles.input}
                 placeholder="+233 24 123 4567"
-                placeholderTextColor="#a2b0a7"
+                placeholderTextColor={colors.textDisabled}
                 keyboardType="phone-pad"
                 value={phone}
                 onChangeText={setPhone}
@@ -128,27 +130,41 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           )}
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>PASSWORD</Text>
             <TextInput
               style={styles.input}
               placeholder="••••••••"
-              placeholderTextColor="#a2b0a7"
+              placeholderTextColor={colors.textDisabled}
               secureTextEntry
               value={password}
               onChangeText={setPassword}
             />
           </View>
 
-          {errorMessage ? <View style={styles.errorBox}><Icon name="alerts" size={16} color="#d92d20" /><Text style={styles.errorText}>{errorMessage}</Text></View> : null}
+          {errorMessage ? (
+            <View style={styles.errorBox}>
+              <Icon name="alerts" size={16} color={colors.googleRed} />
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
 
-          <TouchableOpacity accessibilityRole="button" activeOpacity={0.8} style={styles.button} onPress={() => void handleSubmit()} disabled={loading}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.submitButton}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
             {loading ? (
-              <ActivityIndicator color="#0f172a" />
+              <ActivityIndicator color="#ffffff" />
             ) : (
-              <Text style={styles.buttonText}>{isLogin ? 'Sign In to Mobile App' : 'Create Citizen Account'}</Text>
+              <Text style={styles.submitButtonText}>
+                {isLogin ? 'Sign In to Citizen Radar' : 'Join Safety Road Ghana'}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: spacing.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -157,110 +173,120 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   scrollContent: {
-    padding: 24,
-    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.xxxl,
     minHeight: '100%',
   },
-  header: {
+  brandSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: spacing.xl,
   },
-  illustration: {
-    width: 190,
-    height: 120,
-    marginBottom: 12,
+  brandMark: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+    ...shadows.card,
   },
-  title: {
+  appName: {
+    ...typography.display,
     fontSize: 24,
-    fontWeight: '900',
-    color: '#102018',
-    letterSpacing: -0.4,
+    color: colors.textPrimary,
   },
-  subtitle: {
-    fontSize: 13,
-    color: '#6d7d73',
-    textAlign: 'center',
+  appRegion: {
+    ...typography.caption,
+    color: colors.textSecondary,
     marginTop: 4,
   },
-  card: {
-    backgroundColor: '#ffffff',
-    padding: 4,
-  },
-  tabContainer: {
+  tabSwitcher: {
     flexDirection: 'row',
-    backgroundColor: '#eef7f0',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: radius.lg,
     padding: 4,
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
-  tab: {
+  tabOption: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: radius.md,
   },
-  activeTab: {
-    backgroundColor: '#2fdf76',
+  tabOptionActive: {
+    backgroundColor: colors.surface,
+    ...shadows.card,
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#8a9a91',
+  tabOptionText: {
+    ...typography.bodyStrong,
+    fontSize: 13,
+    color: colors.textTertiary,
   },
-  activeTabText: {
-    color: '#0a3320',
+  tabOptionTextActive: {
+    color: colors.primaryDark,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.card,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6d7d73',
+    ...typography.label,
+    color: colors.textTertiary,
     marginBottom: 6,
-    textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surfaceVariant,
     borderWidth: 1,
-    borderColor: '#d0d5dd',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#102018',
-    fontSize: 15,
-  },
-  button: {
-    backgroundColor: '#2fdf76',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: {
-    color: '#0a3320',
-    fontWeight: '900',
-    fontSize: 15,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    height: 48,
+    paddingHorizontal: spacing.md,
+    fontSize: 14,
+    color: colors.textPrimary,
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#fff5f5',
+    backgroundColor: colors.googleRedLight,
     borderWidth: 1,
-    borderColor: '#f4d1d1',
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 4,
-    marginBottom: 4,
+    borderColor: colors.googleRedLight,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    marginBottom: spacing.md,
   },
   errorText: {
     flex: 1,
-    color: '#b74747',
+    color: colors.googleRed,
     fontSize: 12,
-    lineHeight: 17,
+    lineHeight: 16,
+    fontWeight: '600',
+  },
+  submitButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    ...shadows.card,
+  },
+  submitButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

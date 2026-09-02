@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import Icon from '../components/Icon';
+import { colors, typography, spacing, radius, shadows } from '../theme';
 
 interface EditProfileScreenProps {
   user: any;
@@ -8,57 +21,118 @@ interface EditProfileScreenProps {
 }
 
 export default function EditProfileScreen({ user, onSave, onBack }: EditProfileScreenProps) {
-  const [name, setName] = useState(user?.name || 'Kwame Mensah');
-  const [phone, setPhone] = useState(user?.phone || '+233241234567');
+  const [name, setName] = useState(user?.name || user?.full_name || 'Citizen User');
+  const [phone, setPhone] = useState(user?.phone || '+233 24 123 4567');
+  const [region, setRegion] = useState(user?.region || 'Greater Accra Region');
   const [loading, setLoading] = useState(false);
 
+  const initials = (name || 'CU')
+    .split(' ')
+    .map((w: string) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
   const handleSave = () => {
+    if (!name.trim() || !phone.trim()) {
+      Alert.alert('Required', 'Please enter your full name and contact phone number.');
+      return;
+    }
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      Alert.alert('Profile Updated', 'Your account profile details have been saved.');
+      Alert.alert('Profile Saved', 'Your citizen identification details have been updated.');
       onSave();
-    }, 800);
+    }, 600);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
-      <View style={styles.content}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Back to Profile</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.title}>Edit Account Profile</Text>
-        <Text style={styles.subtitle}>Update your full name and Ghana mobile phone number.</Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Full Name"
-            placeholderTextColor="#64748b"
-          />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* ── Top Bar ────────────────────────────────────────────────────────── */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
+            <Icon name="back" size={18} color={colors.text} />
+          </TouchableOpacity>
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>Edit Profile</Text>
+            <Text style={styles.headerSubtitle}>Citizen Identity & Contact Telemetry</Text>
+          </View>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Ghana Mobile Phone</Text>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="+233 24 123 4567"
-            placeholderTextColor="#64748b"
-            keyboardType="phone-pad"
-          />
+        {/* ── Avatar Card ─────────────────────────────────────────────────────── */}
+        <View style={styles.avatarCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+          <View style={styles.avatarTextWrap}>
+            <Text style={styles.avatarName}>{name || 'Citizen'}</Text>
+            <View style={styles.verifiedChip}>
+              <Icon name="check" size={10} color={colors.primary} />
+              <Text style={styles.verifiedChipText}>Ghana MTTD Citizen ID</Text>
+            </View>
+          </View>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleSave} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Saving Changes...' : 'Save Profile Changes'}</Text>
-        </TouchableOpacity>
-      </View>
+        {/* ── Profile Details Form ────────────────────────────────────────────── */}
+        <View style={styles.formCard}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>FULL NAME</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Full Name"
+                placeholderTextColor={colors.textDisabled}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>GHANA MOBILE PHONE</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="+233 24 000 0000"
+                placeholderTextColor={colors.textDisabled}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>PRIMARY RESIDENTIAL REGION</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={region}
+                onChangeText={setRegion}
+                placeholder="e.g. Greater Accra, Ashanti, Western"
+                placeholderTextColor={colors.textDisabled}
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSave}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.saveBtnText}>Save Changes</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ height: spacing.xxl }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -66,60 +140,134 @@ export default function EditProfileScreen({ user, onSave, onBack }: EditProfileS
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.background,
   },
-  content: {
-    padding: 24,
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxxl,
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   backBtn: {
-    marginBottom: 20,
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  backText: {
-    color: '#f59e0b',
-    fontWeight: '700',
-    fontSize: 14,
+  headerCopy: {
+    flex: 1,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '900',
+  headerTitle: {
+    ...typography.headline,
+    fontSize: 18,
+    color: colors.text,
+  },
+  headerSubtitle: {
+    ...typography.caption,
+    color: colors.textSubtle,
+    marginTop: 1,
+  },
+
+  // Avatar Card
+  avatarCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.lg,
+    ...shadows.card,
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
     color: '#ffffff',
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '800',
   },
-  subtitle: {
-    fontSize: 13,
-    color: '#94a3b8',
-    marginBottom: 24,
+  avatarTextWrap: {
+    marginLeft: spacing.md,
+    flex: 1,
+  },
+  avatarName: {
+    ...typography.title,
+    fontSize: 15,
+    color: colors.text,
+  },
+  verifiedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  verifiedChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primaryDark,
+  },
+
+  // Form Card
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.card,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#cbd5e1',
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.textSubtle,
+    letterSpacing: 0.8,
     marginBottom: 6,
-    textTransform: 'uppercase',
+  },
+  inputContainer: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
   },
   input: {
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#ffffff',
-    fontSize: 15,
+    color: colors.text,
+    fontSize: 14,
+    padding: 0,
   },
-  button: {
-    backgroundColor: '#f59e0b',
-    paddingVertical: 15,
-    borderRadius: 12,
+  saveBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: radius.md,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: spacing.sm,
+    ...shadows.subtle,
   },
-  buttonText: {
-    color: '#0f172a',
-    fontWeight: '900',
-    fontSize: 15,
+  saveBtnText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
