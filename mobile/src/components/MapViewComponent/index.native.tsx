@@ -1,35 +1,38 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import Constants from 'expo-constants';
-import MapView, {
-  Circle,
-  Marker,
-  Callout,
-  Polyline,
-  UrlTile,
-  PROVIDER_DEFAULT,
-} from 'react-native-maps';
-
-/* ── Azure Maps basemap ───────────────────────────────────────────────────
- * Azure serves raster tiles over a plain XYZ URL, so it drops straight into
- * react-native-maps as a UrlTile overlay on top of the platform provider.
- * That keeps one basemap across mobile and the web admin instead of Apple
- * Maps on iOS, Google on Android and CARTO on the web.
+/* ─── Native map: Azure Maps Web SDK inside a WebView ─────────────────────────
  *
- * When the key is absent the overlay is simply omitted and the platform's own
- * basemap shows through — a map with the wrong tiles beats a blank screen.
- * ---------------------------------------------------------------------- */
-const AZURE_KEY = process.env.EXPO_PUBLIC_AZURE_MAPS_KEY;
+ * This screen used to render `react-native-maps`, which on Android is the
+ * Google Maps SDK. Its MapView throws
+ *
+ *   IllegalStateException: API key not found. Check that <meta-data
+ *   android:name="com.google.android.geo.API_KEY" .../> is in the
+ *   <application> element of AndroidManifest.xml
+ *
+ * from onCreate the moment it attaches to the window — which Fabric turns into
+ * a fatal "addViewAt: failed to insert view". Opening the Map tab killed the
+ * process outright.
+ *
+ * The Azure raster tiles drawn over that basemap never avoided the problem:
+ * the key is needed to construct the view, not to fetch tiles. So the app
+ * needed a Google key to display a map that contained no Google data.
+ *
+ * `azure-maps-control` is Azure's own map SDK and has always been what the web
+ * build uses (see index.web.tsx) — but it is browser-only and cannot run in
+ * React Native's JS runtime, which has no DOM. A WebView is a browser, so it
+ * can run exactly the same SDK, with the same sources, layers and styling as
+ * the web map. One Azure basemap on both platforms, no Google anywhere, and
+ * only the Azure subscription key to manage.
+ *
+ * The trade is a postMessage bridge: markers, camera, route and pin are pushed
+ * in as injected JavaScript, and taps and drags come back out as messages. The
+ * public props are unchanged, so callers do not know the difference.
+ * -------------------------------------------------------------------------- */
 
-const AZURE_TILE_URL =
-  'https://atlas.microsoft.com/map/tile' +
-  '?api-version=2024-04-01' +
-  '&tilesetId=microsoft.base.road' +
-  '&zoom={z}&x={x}&y={y}' +
-  '&tileSize=256' +
-  `&subscription-key=${AZURE_KEY ?? ''}`;
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { colors, radius, spacing, typography } from '../../theme';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types (identical to index.web.tsx) ───────────────────────────────────────
 
 export interface MapMarkerData {
   id: string;
@@ -40,9 +43,8 @@ export interface MapMarkerData {
   type?: string;
   status?: string;
   color?: string;
-  /** For clusters: how many reports are in this spot */
   clusterCount?: number;
-  /** Alert geofence radius in metres. */
+  /** Alert geofence radius in metres, drawn as a real ground circle. */
   radiusM?: number;
 }
 
@@ -68,409 +70,359 @@ export interface MapViewComponentProps {
   routePoints?: { latitude: number; longitude: number }[];
 }
 
-// ─── Hotspot sizing & color ───────────────────────────────────────────────────
-function hotspotStyle(marker: MapMarkerData): {
-  radius: number;
-  fillColor: string;
-  strokeColor: string;
-  strokeWidth: number;
-} {
-  const count = marker.clusterCount ?? 1;
-  const isResolved = marker.status === 'RESOLVED';
+const AZURE_KEY = process.env.EXPO_PUBLIC_AZURE_MAPS_KEY;
 
-  if (isResolved) {
-    return {
-      radius: 80 + Math.min(count, 6) * 20,
-      fillColor: 'rgba(34,197,94,0.30)',
-      strokeColor: 'rgba(34,197,94,0.70)',
-      strokeWidth: 1.5,
-    };
-  }
-
-  const intensity = Math.min(count / 8, 1);
-
-  if (marker.type === 'ACCIDENT') {
-    const base = 220 + Math.round(intensity * 35);
-    const g = Math.round(50 - intensity * 40);
-    const b = Math.round(50 - intensity * 40);
-    const opacity = 0.35 + intensity * 0.40;
-    return {
-      radius: 120 + intensity * 380,
-      fillColor: `rgba(${base},${g},${b},${opacity.toFixed(2)})`,
-      strokeColor: `rgba(${base},${g},${b},0.85)`,
-      strokeWidth: count > 3 ? 0 : 1.5,
-    };
-  } else {
-    const fillColor = intensity > 0.5
-      ? `rgba(249,115,22,${(0.35 + intensity * 0.40).toFixed(2)})`
-      : `rgba(245,158,11,${(0.30 + intensity * 0.35).toFixed(2)})`;
-    const strokeColor = intensity > 0.5
-      ? 'rgba(249,115,22,0.80)'
-      : 'rgba(245,158,11,0.75)';
-    return {
-      radius: 100 + intensity * 320,
-      fillColor,
-      strokeColor,
-      strokeWidth: count > 3 ? 0 : 1.5,
-    };
-  }
+/** Latitude span to an Azure zoom level, near enough for an initial view. */
+function zoomForDelta(latitudeDelta: number): number {
+  if (!latitudeDelta || latitudeDelta <= 0) return 12;
+  return Math.max(2, Math.min(18, Math.log2(360 / latitudeDelta)));
 }
 
-/* ── Google Maps key guard (Android) ──────────────────────────────────
+/* ── The page hosting the map ────────────────────────────────────────────────
  *
- * react-native-maps on Android is Google Maps, and its MapView throws
- * IllegalStateException("API key not found") from onCreate the moment it
- * attaches to the window. Under Fabric that surfaces as a fatal
- * "addViewAt: failed to insert view" and takes the whole app down — opening
- * the Map tab killed the process outright.
+ * Built once and never rebuilt: reloading the WebView would throw away the
+ * user's pan and zoom. Everything after first paint arrives through
+ * injectJavaScript instead.
  *
- * A missing key is a build-configuration problem, not something the user can
- * act on, but it must not be a crash. Render the placeholder instead: the rest
- * of the app stays usable and the reason is visible rather than silent.
- *
- * iOS uses Apple Maps and needs no key, so this only gates Android.
- * ─────────────────────────────────────────────────────────────────── */
-const GOOGLE_MAPS_KEY =
-  (Constants.expoConfig?.extra?.googleMapsApiKey as string | null | undefined) ??
-  (Constants.expoConfig?.android?.config?.googleMaps?.apiKey as string | undefined) ??
-  null;
+ * The SDK is loaded from Azure's CDN. The map needs the network for tiles
+ * regardless, so this adds no offline capability that would otherwise exist —
+ * but it does mean a cold start with no connection shows the load failure
+ * rather than a blank grey square, which is what onLoadFailed reports.
+ * ------------------------------------------------------------------------- */
+function buildHtml(key: string, centerLat: number, centerLng: number, zoom: number): string {
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" type="text/css" />
+<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+<style>
+  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#EEF2F0; }
+  #map { width:100%; height:100%; }
+  .azure-map-copyright, .azure-maps-control-container a { font-size: 9px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+(function () {
+  var map, source, routeSource, pin, bubbles;
+  var markerIndex = {};
 
-const MAPS_UNAVAILABLE = Platform.OS === 'android' && !GOOGLE_MAPS_KEY;
+  function post(type, payload) {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, payload: payload }));
+    }
+  }
 
-function MapUnavailable({ style }: { style?: any }) {
-  return (
-    <View style={[styles.unavailable, style]}>
-      <Text style={styles.unavailableTitle}>Map unavailable</Text>
-      <Text style={styles.unavailableBody}>
-        This build is missing its Google Maps key, so the map cannot be drawn.
-        Reports and alerts still work everywhere else in the app.
-      </Text>
-    </View>
-  );
+  function fail(message) { post('error', { message: String(message) }); }
+
+  if (typeof atlas === 'undefined') { fail('Azure Maps SDK did not load'); return; }
+
+  try {
+    map = new atlas.Map('map', {
+      center: [${centerLng}, ${centerLat}],
+      zoom: ${zoom},
+      style: 'road',
+      language: 'en-US',
+      showFeedbackLink: false,
+      renderWorldCopies: false,
+      authOptions: { authType: 'subscriptionKey', subscriptionKey: '${key}' }
+    });
+  } catch (e) { fail(e && e.message ? e.message : e); return; }
+
+  map.events.add('error', function (e) {
+    fail((e && e.error && e.error.message) || 'Map error');
+  });
+
+  map.events.add('ready', function () {
+    /* The route has its own source so redrawing it never disturbs the hotspot
+       layer, and it is added first so the line sits underneath. */
+    routeSource = new atlas.source.DataSource();
+    map.sources.add(routeSource);
+    map.layers.add(new atlas.layer.LineLayer(routeSource, null, {
+      strokeColor: '#2B5F9E', strokeWidth: 5, strokeOpacity: 0.85,
+      lineJoin: 'round', lineCap: 'round'
+    }));
+
+    source = new atlas.source.DataSource();
+    map.sources.add(source);
+
+    /* Geofence rings. Azure renders a Point tagged subType "Circle" as a true
+       ground circle, so the ring is the real alert radius at every zoom rather
+       than a fixed pixel size that lies as you zoom out. */
+    map.layers.add(new atlas.layer.PolygonLayer(source, null, {
+      fillColor: ['get', 'color'], fillOpacity: 0.15,
+      filter: ['==', ['geometry-type'], 'Polygon']
+    }));
+    map.layers.add(new atlas.layer.LineLayer(source, null, {
+      strokeColor: ['get', 'color'], strokeWidth: 1.5, strokeOpacity: 0.6,
+      filter: ['==', ['geometry-type'], 'Polygon']
+    }));
+
+    bubbles = new atlas.layer.BubbleLayer(source, null, {
+      radius: ['interpolate', ['linear'], ['get', 'count'], 1, 7, 20, 20],
+      color: ['get', 'color'],
+      strokeColor: '#FFFFFF',
+      strokeWidth: 2,
+      filter: ['==', ['geometry-type'], 'Point']
+    });
+    map.layers.add(bubbles);
+
+    map.layers.add(new atlas.layer.SymbolLayer(source, null, {
+      iconOptions: { image: 'none' },
+      textOptions: {
+        textField: ['case', ['>', ['get', 'count'], 1], ['to-string', ['get', 'count']], ''],
+        color: '#FFFFFF', size: 11, offset: [0, 0.1], allowOverlap: true
+      },
+      filter: ['==', ['geometry-type'], 'Point']
+    }));
+
+    map.events.add('click', bubbles, function (e) {
+      var shape = e.shapes && e.shapes[0];
+      if (!shape || !shape.getProperties) return;
+      var id = shape.getProperties().id;
+      if (id && markerIndex[id]) post('markerPress', markerIndex[id]);
+    });
+
+    /* moveend, not move: reporting every frame of a pan would fire hundreds of
+       bridge messages and re-render the caller on each one. */
+    map.events.add('moveend', function () {
+      var cam = map.getCamera();
+      var b = cam.bounds;
+      post('regionChange', {
+        latitude: cam.center[1],
+        longitude: cam.center[0],
+        latitudeDelta: b ? Math.abs(b[3] - b[1]) : 0.05,
+        longitudeDelta: b ? Math.abs(b[2] - b[0]) : 0.05
+      });
+    });
+
+    post('ready', {});
+  });
+
+  // ── Commands pushed in from React Native ──────────────────────────────────
+
+  window.SRG = {
+    setMarkers: function (list) {
+      if (!source) return;
+      markerIndex = {};
+      source.clear();
+      for (var i = 0; i < list.length; i++) {
+        var m = list[i];
+        if (!isFinite(m.latitude) || !isFinite(m.longitude)) continue;
+        markerIndex[m.id] = m;
+        var props = {
+          id: m.id,
+          color: m.color || '#BC3B2F',
+          count: m.clusterCount || 1,
+          title: m.title
+        };
+        if (m.radiusM && m.radiusM > 0) {
+          var ring = {};
+          for (var k in props) ring[k] = props[k];
+          ring.subType = 'Circle';
+          ring.radius = m.radiusM;
+          source.add(new atlas.data.Feature(
+            new atlas.data.Point([m.longitude, m.latitude]), ring));
+        }
+        source.add(new atlas.data.Feature(
+          new atlas.data.Point([m.longitude, m.latitude]), props));
+      }
+    },
+
+    setRoute: function (points) {
+      if (!routeSource) return;
+      routeSource.clear();
+      if (!points || points.length < 2) return;
+      var positions = points.map(function (p) { return [p.longitude, p.latitude]; });
+      routeSource.add(new atlas.data.Feature(new atlas.data.LineString(positions)));
+      // Frame the whole journey — a route preview that opens zoomed to the
+      // start tells you nothing about what is further along it.
+      map.setCamera({
+        bounds: atlas.data.BoundingBox.fromPositions(positions),
+        padding: 48
+      });
+    },
+
+    setPin: function (coords) {
+      if (!map) return;
+      if (!coords) {
+        if (pin) { map.markers.remove(pin); pin = null; }
+        return;
+      }
+      if (!pin) {
+        pin = new atlas.HtmlMarker({
+          draggable: true,
+          color: '#146B45',
+          position: [coords.longitude, coords.latitude]
+        });
+        map.markers.add(pin);
+        map.events.add('dragend', pin, function () {
+          var p = pin.getOptions().position;
+          post('pinDragEnd', { latitude: p[1], longitude: p[0] });
+        });
+      } else {
+        pin.setOptions({ position: [coords.longitude, coords.latitude] });
+      }
+    },
+
+    setCamera: function (r) {
+      if (!map) return;
+      map.setCamera({ center: [r.longitude, r.latitude] });
+    }
+  };
+})();
+</script>
+</body>
+</html>`;
 }
 
-// ─── Native Map Component ─────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MapViewComponent({
   region,
   markers = [],
   onMarkerPress,
-  routePoints,
   style,
   onRegionChange,
   draggablePin,
   onPinDragEnd,
+  routePoints,
 }: MapViewComponentProps) {
-  // Allow tracksViewChanges for initial render cycle so custom dots render
-  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+  const webRef = useRef<WebView>(null);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Built once. Rebuilding it would reload the page and reset the user's view.
+  const html = useMemo(
+    () =>
+      buildHtml(
+        AZURE_KEY ?? '',
+        region.latitude,
+        region.longitude,
+        zoomForDelta(region.latitudeDelta)
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const send = useCallback((expression: string) => {
+    // The trailing `true;` keeps the WebView from warning about a non-null
+    // evaluation result.
+    webRef.current?.injectJavaScript(`${expression} true;`);
+  }, []);
 
   useEffect(() => {
-    // Stop tracking after 1.2s to optimize map FPS
-    const timer = setTimeout(() => {
-      setTracksViewChanges(false);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [markers]);
+    if (!ready) return;
+    send(`window.SRG.setMarkers(${JSON.stringify(markers)});`);
+  }, [markers, ready, send]);
 
-  // Separate incident markers from user/emergency markers
-  const { incidentMarkers, otherMarkers } = useMemo(() => {
-    const incident: MapMarkerData[] = [];
-    const other: MapMarkerData[] = [];
-    markers.forEach((m) => {
-      if (m.type === 'ACCIDENT' || m.type === 'HAZARD') {
-        incident.push(m);
-      } else {
-        other.push(m);
+  useEffect(() => {
+    if (!ready) return;
+    send(`window.SRG.setRoute(${JSON.stringify(routePoints ?? [])});`);
+  }, [routePoints, ready, send]);
+
+  useEffect(() => {
+    if (!ready) return;
+    send(`window.SRG.setPin(${JSON.stringify(draggablePin ?? null)});`);
+  }, [draggablePin, ready, send]);
+
+  const handleMessage = useCallback(
+    (event: WebViewMessageEvent) => {
+      let message: { type: string; payload: any };
+      try {
+        message = JSON.parse(event.nativeEvent.data);
+      } catch {
+        return;
       }
-    });
-    return { incidentMarkers: incident, otherMarkers: other };
-  }, [markers]);
 
-  if (MAPS_UNAVAILABLE) {
-    return <MapUnavailable style={style} />;
+      switch (message.type) {
+        case 'ready':
+          setReady(true);
+          break;
+        case 'markerPress':
+          onMarkerPress?.(message.payload as MapMarkerData);
+          break;
+        case 'regionChange':
+          onRegionChange?.(message.payload);
+          break;
+        case 'pinDragEnd':
+          onPinDragEnd?.(message.payload);
+          break;
+        case 'error':
+          setLoadError(message.payload?.message ?? 'Map failed to load');
+          break;
+      }
+    },
+    [onMarkerPress, onRegionChange, onPinDragEnd]
+  );
+
+  if (!AZURE_KEY) {
+    return (
+      <View style={[s.fallback, style]}>
+        <Text style={s.fallbackTitle}>Map not configured</Text>
+        <Text style={s.fallbackBody}>
+          Set EXPO_PUBLIC_AZURE_MAPS_KEY in mobile/.env and rebuild.
+        </Text>
+      </View>
+    );
   }
 
   return (
-    <MapView
-      provider={PROVIDER_DEFAULT}
-      style={style ?? StyleSheet.absoluteFill}
-      initialRegion={region}
-      region={region}
-      mapType="standard"
-      showsUserLocation={false}
-      showsCompass
-      showsScale={false}
-      showsBuildings={true}
-      loadingEnabled
-      onRegionChangeComplete={(r) => onRegionChange?.(r)}
-    >
-      {/* Azure basemap sits beneath every overlay; zIndex -1 keeps hotspot
-          circles and markers drawn on top of it. */}
-      {AZURE_KEY ? (
-        <UrlTile
-          urlTemplate={AZURE_TILE_URL}
-          maximumZ={20}
-          minimumZ={1}
-          tileSize={256}
-          zIndex={-1}
-          shouldReplaceMapContent
-        />
+    <View style={[StyleSheet.absoluteFill, style]}>
+      <WebView
+        ref={webRef}
+        source={{ html }}
+        originWhitelist={['*']}
+        onMessage={handleMessage}
+        javaScriptEnabled
+        domStorageEnabled
+        // The map does its own panning; letting the WebView scroll or bounce
+        // would fight the gesture.
+        scrollEnabled={false}
+        bounces={false}
+        overScrollMode="never"
+        setSupportMultipleWindows={false}
+        onError={() => setLoadError('Could not load the map.')}
+        onHttpError={() => setLoadError('Could not load the map.')}
+        style={s.web}
+      />
+
+      {loadError ? (
+        <View style={s.loading}>
+          <Text style={s.fallbackTitle}>Map unavailable</Text>
+          <Text style={s.fallbackBody}>{loadError}</Text>
+        </View>
+      ) : !ready ? (
+        <View style={s.loading} pointerEvents="none">
+          <Text style={s.fallbackBody}>Loading map…</Text>
+        </View>
       ) : null}
-      {routePoints && routePoints.length > 1 ? (
-        <Polyline
-          coordinates={routePoints}
-          strokeColor="#2B5F9E"
-          strokeWidth={5}
-          lineJoin="round"
-          lineCap="round"
-        />
-      ) : null}
-
-      {/* ── Hotspot circles ────────────────────────────────────────────── */}
-      {incidentMarkers.map((m) => {
-        const hs = hotspotStyle(m);
-        return (
-          <Circle
-            key={`circle-${m.id}`}
-            center={{ latitude: m.latitude, longitude: m.longitude }}
-            radius={hs.radius}
-            fillColor={hs.fillColor}
-            strokeColor={hs.strokeColor}
-            strokeWidth={hs.strokeWidth}
-            zIndex={1}
-          />
-        );
-      })}
-
-      {/* ── Incident markers (dot on top of each circle) ─────────────────── */}
-      {incidentMarkers.map((m) => (
-        <Marker
-          key={`marker-${m.id}`}
-          coordinate={{ latitude: m.latitude, longitude: m.longitude }}
-          onPress={() => onMarkerPress?.(m)}
-          tracksViewChanges={tracksViewChanges}
-          zIndex={2}
-          anchor={{ x: 0.5, y: 0.5 }}
-        >
-          {/* Custom dot — white ring + colored fill */}
-          <View
-            style={[
-              styles.dot,
-              { backgroundColor: m.color ?? (m.type === 'ACCIDENT' ? '#dc2626' : '#f97316') },
-            ]}
-          />
-
-          <Callout onPress={() => onMarkerPress?.(m)}>
-            <View style={styles.callout}>
-              <Text
-                style={[
-                  styles.calloutType,
-                  { color: m.type === 'ACCIDENT' ? '#dc2626' : '#d97706' },
-                ]}
-              >
-                {m.clusterCount && m.clusterCount > 1
-                  ? `${m.clusterCount} incidents`
-                  : m.type ?? 'INCIDENT'}
-              </Text>
-              <Text style={styles.calloutTitle} numberOfLines={2}>
-                {m.title}
-              </Text>
-              {m.locationName ? (
-                <Text style={styles.calloutLocation} numberOfLines={1}>
-                  {m.locationName}
-                </Text>
-              ) : null}
-              {m.status ? (
-                <View
-                  style={[
-                    styles.calloutStatusPill,
-                    m.status === 'RESOLVED' ? styles.pillResolved : styles.pillPending,
-                  ]}
-                >
-                  <Text style={styles.calloutStatusText}>{m.status}</Text>
-                </View>
-              ) : null}
-            </View>
-          </Callout>
-        </Marker>
-      ))}
-
-      {/* ── Emergency service markers (blue pin) ────────────────────────── */}
-      {otherMarkers
-        .filter((m) => m.type === 'EMERGENCY')
-        .map((m) => (
-          <Marker
-            key={`svc-${m.id}`}
-            coordinate={{ latitude: m.latitude, longitude: m.longitude }}
-            onPress={() => onMarkerPress?.(m)}
-            tracksViewChanges={tracksViewChanges}
-            zIndex={3}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View style={styles.svcDot} />
-            <Callout>
-              <View style={styles.callout}>
-                <Text style={[styles.calloutType, { color: '#1d4ed8' }]}>EMERGENCY</Text>
-                <Text style={styles.calloutTitle}>{m.title}</Text>
-                {m.locationName ? (
-                  <Text style={styles.calloutLocation}>{m.locationName}</Text>
-                ) : null}
-              </View>
-            </Callout>
-          </Marker>
-        ))}
-
-      {/* ── User location dot ────────────────────────────────────────────── */}
-      {otherMarkers
-        .filter((m) => m.type === 'USER')
-        .map((m) => (
-          <Marker
-            key="user-loc"
-            coordinate={{ latitude: m.latitude, longitude: m.longitude }}
-            tracksViewChanges={tracksViewChanges}
-            zIndex={10}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View style={styles.userOuter}>
-              <View style={styles.userInner} />
-            </View>
-          </Marker>
-        ))}
-
-      {/* ── Draggable location picker pin ────────────────────────────────── */}
-      {draggablePin && (
-        <Marker
-          coordinate={draggablePin}
-          draggable
-          onDragEnd={(e) => onPinDragEnd?.(e.nativeEvent.coordinate)}
-          tracksViewChanges={tracksViewChanges}
-          zIndex={10}
-          anchor={{ x: 0.5, y: 1 }}
-        >
-          <View style={styles.pickerPin}>
-            <View style={styles.pickerPinDot} />
-          </View>
-        </Marker>
-      )}
-    </MapView>
+    </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  unavailable: {
+const s = StyleSheet.create({
+  web: {
+    flex: 1,
+    backgroundColor: colors.surfaceSunken,
+  },
+  fallback: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#EEF2F0',
+    backgroundColor: colors.surfaceSunken,
+    padding: spacing.xl,
+    borderRadius: radius.md,
   },
-  unavailableTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2A24',
-    marginBottom: 6,
-  },
-  unavailableBody: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#5A6B62',
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  dot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2.5,
-    borderColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.35,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  svcDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#1d4ed8',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    elevation: 3,
-  },
-  userOuter: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(37,99,235,0.25)',
+  fallbackTitle: { ...typography.title, marginBottom: 4 },
+  fallbackBody: { ...typography.callout, textAlign: 'center', color: colors.textSubtle },
+  loading: {
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(37,99,235,0.40)',
-  },
-  userInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#2563eb',
-    borderWidth: 1.5,
-    borderColor: '#ffffff',
-  },
-  pickerPin: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(11,122,70,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickerPinDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#0B7A46',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-  },
-  callout: {
-    minWidth: 160,
-    maxWidth: 220,
-    padding: 10,
-    gap: 3,
-  },
-  calloutType: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  calloutTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#111111',
-  },
-  calloutLocation: {
-    fontSize: 11,
-    color: '#555555',
-    marginTop: 2,
-  },
-  calloutStatusPill: {
-    marginTop: 6,
-    alignSelf: 'flex-start',
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
-  pillResolved: { backgroundColor: '#dcfce7' },
-  pillPending: { backgroundColor: '#fef3c7' },
-  calloutStatusText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#374151',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    backgroundColor: colors.surfaceSunken,
   },
 });
