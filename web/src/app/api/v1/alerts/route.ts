@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { verifyRequestAuth } from '@/lib/auth';
 import { distanceMeters } from '@/lib/geo';
 
+// Reads the database per request: never prerender or cache at build time.
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/v1/alerts?lat=&lng=&radiusKm=&strict=
  *

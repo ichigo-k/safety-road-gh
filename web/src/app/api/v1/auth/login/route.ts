@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { comparePassword, normalizeRole, signToken } from '@/lib/auth';
 
+// Reads the database per request: never prerender or cache at build time.
+export const dynamic = 'force-dynamic';
+
 const DEMO_ADMIN = {
   email: 'admin@safetyroad.gov.gh',
   password: 'Admin@123456',

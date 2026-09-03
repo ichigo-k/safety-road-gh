@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyRequestAuth } from '@/lib/auth';
 
+// Reads the database per request: never prerender or cache at build time.
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const authUser = verifyRequestAuth(req);
   if (!authUser) {

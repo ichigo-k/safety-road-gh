@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "hotspots:recompute": "npx tsx scripts/recompute-hotspots.ts",
-    "check:hotspots": "npx tsx scripts/check-hotspots.ts"
+    "check:hotspots": "npx tsx scripts/check-hotspots.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.74.7",
