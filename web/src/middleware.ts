@@ -1,5 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from './lib/auth';
+import { jwtVerify } from 'jose';
+
+/* ── Token verification on the Edge ─────────────────────────────────────
+ *
+ * This used to call verifyToken() from ./lib/auth, which uses `jsonwebtoken`
+ * and node:crypto. Middleware runs on the Edge runtime, where neither is
+ * available, so jwt.verify() threw on every request and verifyToken's catch
+ * turned that into `null` — read here as "invalid token".
+ *
+ * The effect was total: every authenticated API route answered a perfectly
+ * good, freshly issued token with 401 "Invalid or expired token". Signing
+ * still worked because /auth/login is a route handler on the Node runtime,
+ * so users could log in and then do nothing at all.
+ *
+ * `jose` verifies with Web Crypto, which the Edge runtime does have. The
+ * token format is unchanged — same HS256, same secret — so tokens already
+ * issued keep working.
+ * ────────────────────────────────────────────────────────────────── */
+
+interface EdgeTokenPayload {
+  userId: string;
+  email: string;
+  role: string;
+  full_name: string;
+}
+
+function getJwtSecret(): Uint8Array {
+  const secret =
+    process.env.JWT_SECRET ||
+    (process.env.NODE_ENV === 'production' ? '' : 'local-only-safety-road-secret');
+  if (!secret) throw new Error('JWT_SECRET must be configured in production');
+  return new TextEncoder().encode(secret);
+}
+
+async function verifyEdgeToken(token: string): Promise<EdgeTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret());
+    return payload as unknown as EdgeTokenPayload;
+  } catch {
+    return null;
+  }
+}
 
 /* ── Public routes that never need a token ─────────────────────────────── */
 const PUBLIC_API_ROUTES = [
@@ -16,6 +57,23 @@ const PUBLIC_API_ROUTES = [
   '/api/v1/releases',
   '/api/v1/maps',
 ];
+
+/* Reads that are public but whose path cannot simply be prefix-matched.
+ *
+ * GET /api/v1/reports backs the home screen's area feed and the live map, and
+ * its route handler deliberately has no auth check — but the path was missing
+ * from the list above, so the middleware demanded a token the app had no
+ * reason to send. GET /api/v1/reports/<id> is public for the same reason.
+ *
+ * /api/v1/reports/my is the exception: it answers "my reports" and needs the
+ * caller's identity, so it stays behind the token. A plain prefix entry for
+ * '/api/v1/reports' would have swept it in too. Writes (POST/PATCH/DELETE)
+ * stay protected on every path here. */
+function isPublicRead(pathname: string, method: string): boolean {
+  if (method !== 'GET') return false;
+  if (pathname === '/api/v1/reports/my') return false;
+  return pathname === '/api/v1/reports' || pathname.startsWith('/api/v1/reports/');
+}
 
 /* ── Admin-only API routes (require ADMIN role) ─────────────────────────── */
 const ADMIN_API_PREFIXES = [
@@ -34,7 +92,7 @@ function setCorsHeaders(response: NextResponse, origin: string | null) {
   response.headers.set('Vary', 'Origin');
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const origin = request.headers.get('origin');
 
@@ -63,7 +121,7 @@ export function middleware(request: NextRequest) {
     setCorsHeaders(res, origin);
 
     // Let public endpoints through without a token.
-    if (isPublicApi(pathname)) return res;
+    if (isPublicApi(pathname) || isPublicRead(pathname, request.method)) return res;
 
     // Every other /api/ route requires a valid JWT.
     const authHeader = request.headers.get('authorization');
@@ -75,7 +133,7 @@ export function middleware(request: NextRequest) {
       return err;
     }
 
-    const payload = verifyToken(token);
+    const payload = await verifyEdgeToken(token);
     if (!payload) {
       const err = NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
       setCorsHeaders(err, origin);
