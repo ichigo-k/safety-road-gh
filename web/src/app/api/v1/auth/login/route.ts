@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { comparePassword, normalizeRole, signToken } from '@/lib/auth';
+import { normalizeRole, signToken } from '@/lib/auth';
+import { verifyPassword } from '@/lib/password';
 
 // Reads the database per request: never prerender or cache at build time.
 export const dynamic = 'force-dynamic';
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    const isMatch = await comparePassword(password, user.password_hash);
+    const isMatch = verifyPassword(password, user.password_hash);
     if (!isMatch) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }

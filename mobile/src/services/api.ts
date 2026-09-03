@@ -74,6 +74,16 @@ export async function removeUserData() {
   await removeStorageItem(USER_KEY);
 }
 
+/* ── Global 401 callback ────────────────────────────────────────────────
+ * Set by App.tsx on mount. When apiFetch gets a 401, it calls this so the
+ * app can wipe the session and send the user back to AUTH from anywhere.
+ * ---------------------------------------------------------------------- */
+let _onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(fn: () => void) {
+  _onUnauthorized = fn;
+}
+
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = await getAuthToken();
 

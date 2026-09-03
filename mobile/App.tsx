@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
-import { getAuthToken, getUserData } from './src/services/api';
+import { getAuthToken, getUserData, removeAuthToken, removeUserData } from './src/services/api';
 import TabBar, { ReportFab, TabItem } from './src/components/TabBar';
 import { colors } from './src/theme';
 import { AreaProvider } from './src/services/area';
@@ -88,6 +88,39 @@ export default function App() {
   const [reportType, setReportType] = useState<'ACCIDENT' | 'HAZARD'>('ACCIDENT');
   const hasSession = useRef(false);
 
+  /* ── Screens that require a valid session ───────────────────────────────
+   * Pre-auth screens (SPLASH, ONBOARDING, AUTH, password reset flow) are
+   * intentionally absent. Everything else is gated.
+   * ---------------------------------------------------------------------- */
+  const PROTECTED_SCREENS = new Set<ScreenState>([
+    'HOME', 'REPORT', 'LOCATION_PICKER', 'REPORT_SUBMITTED',
+    'MY_REPORTS', 'REPORT_DETAILS', 'MAP', 'ROUTE_PREVIEW',
+    'AREA_PICKER', 'EMERGENCY', 'ROAD_ALERTS', 'ALERT_DETAILS',
+    'SAFETY_TIPS', 'SAFETY_TIP_DETAILS', 'NOTIFICATIONS',
+    'PROFILE', 'EDIT_PROFILE', 'CHANGE_PASSWORD',
+    'SETTINGS', 'HELP_SUPPORT', 'ABOUT', 'PRIVACY_POLICY', 'TERMS_CONDITIONS',
+  ]);
+
+  /* Safe navigation: redirect to AUTH if trying to reach a protected screen
+   * without a session. Use this everywhere instead of setScreen directly. */
+  const navigateTo = useCallback((target: ScreenState) => {
+    if (PROTECTED_SCREENS.has(target) && !hasSession.current) {
+      setScreen('AUTH');
+      return;
+    }
+    setScreen(target);
+  }, []);
+
+  /* Global 401 handler — called by apiFetch when a token is rejected.
+   * Wipes the session and sends the user back to the login screen. */
+  const handleUnauthorized = useCallback(() => {
+    hasSession.current = false;
+    setUser(null);
+    removeAuthToken();
+    removeUserData();
+    setScreen('AUTH');
+  }, []);
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -101,7 +134,7 @@ export default function App() {
       if (token) {
         setScreen('HOME');
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // The splash timer resolves after checkAuth, so without this guard it would
@@ -116,15 +149,18 @@ export default function App() {
   };
 
   const handleLoginSuccess = (userData: any) => {
+    hasSession.current = true;
     setUser(userData);
     setScreen('HOME');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    hasSession.current = false;
     setUser(null);
+    await removeAuthToken();
+    await removeUserData();
     setScreen('AUTH');
   };
-
   // Which tab lights up for the current screen — detail screens keep their
   // parent tab active.
   const TAB_OWNERS: Record<string, ScreenState[]> = {
@@ -171,208 +207,207 @@ export default function App() {
 
   return (
     <AreaProvider>
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <View style={styles.content}>
-        {screen === 'SPLASH' && <SplashScreen onFinish={handleFinishSplash} />}
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <View style={styles.content}>
+          {screen === 'SPLASH' && <SplashScreen onFinish={handleFinishSplash} />}
 
-        {screen === 'ONBOARDING' && <OnboardingScreen onFinish={handleFinishOnboarding} />}
+          {screen === 'ONBOARDING' && <OnboardingScreen onFinish={handleFinishOnboarding} />}
 
-        {screen === 'AUTH' && (
-          <AuthScreen
-            onLoginSuccess={handleLoginSuccess}
-            onForgotPassword={() => setScreen('FORGOT_PASSWORD')}
+          {screen === 'AUTH' && (
+            <AuthScreen
+              onLoginSuccess={handleLoginSuccess}
+              onForgotPassword={() => setScreen('FORGOT_PASSWORD')}
+            />
+          )}
+
+          {screen === 'FORGOT_PASSWORD' && (
+            <ForgotPasswordScreen
+              onCodeSent={(email) => {
+                setResetEmail(email);
+                setScreen('RESET_PASSWORD');
+              }}
+              onBackToLogin={() => setScreen('AUTH')}
+            />
+          )}
+
+          {screen === 'RESET_PASSWORD' && (
+            <ResetPasswordScreen email={resetEmail} onSuccess={() => setScreen('RESET_SUCCESS')} />
+          )}
+
+          {screen === 'RESET_SUCCESS' && (
+            <ResetSuccessScreen onBackToLogin={() => setScreen('AUTH')} />
+          )}
+
+          {screen === 'EMAIL_VERIFICATION' && (
+            <EmailVerificationScreen
+              email={user?.email || 'user@safetyroad.gov.gh'}
+              onVerified={() => navigateTo('HOME')}
+            />
+          )}
+
+          {screen === 'HOME' && (
+            <HomeScreen
+              onNavigateToReport={(type) => {
+                setReportType(type);
+                navigateTo('REPORT');
+              }}
+              onNavigateToEmergency={() => navigateTo('EMERGENCY')}
+              onNavigateToMap={() => navigateTo('MAP')}
+              onNavigateToRoute={() => navigateTo('ROUTE_PREVIEW')}
+              onChangeArea={() => navigateTo('AREA_PICKER')}
+              onNavigateToAlerts={() => navigateTo('ROAD_ALERTS')}
+              onNavigateToTips={() => navigateTo('SAFETY_TIPS')}
+            />
+          )}
+
+          {screen === 'REPORT' && (
+            <ReportSubmitScreen
+              initialType={reportType}
+              onBack={() => navigateTo('HOME')}
+              onSuccess={() => navigateTo('REPORT_SUBMITTED')}
+            />
+          )}
+
+          {screen === 'LOCATION_PICKER' && (
+            <LocationPickerScreen
+              onLocationSelected={(_name, _lat, _lng) => navigateTo('REPORT')}
+              onCancel={() => navigateTo('REPORT')}
+            />
+          )}
+
+          {screen === 'REPORT_SUBMITTED' && (
+            <ReportSubmittedScreen
+              onGoToTracking={() => navigateTo('MY_REPORTS')}
+              onGoHome={() => navigateTo('HOME')}
+            />
+          )}
+
+          {screen === 'MY_REPORTS' && (
+            <MyReportsScreen
+              onSelectReport={(report) => {
+                setSelectedReport(report);
+                navigateTo('REPORT_DETAILS');
+              }}
+              onNewReport={() => {
+                setReportType('ACCIDENT');
+                navigateTo('REPORT');
+              }}
+            />
+          )}
+
+          {screen === 'REPORT_DETAILS' && (
+            <ReportDetailsScreen
+              report={selectedReport}
+              onBack={() => navigateTo('MY_REPORTS')}
+              onOpenMap={() => navigateTo('MAP')}
+            />
+          )}
+
+          {screen === 'MAP' && (
+            <MapScreen
+              onNavigateToReport={(type) => {
+                setReportType(type);
+                navigateTo('REPORT');
+              }}
+            />
+          )}
+
+          {screen === 'ROUTE_PREVIEW' && (
+            <RoutePreviewScreen onBack={() => navigateTo('HOME')} />
+          )}
+
+          {screen === 'AREA_PICKER' && <AreaPickerScreen onDone={() => navigateTo('HOME')} />}
+
+          {screen === 'EMERGENCY' && <EmergencyScreen onBack={() => navigateTo('HOME')} />}
+
+          {screen === 'ROAD_ALERTS' && (
+            <NotificationsScreen
+              onSelectAlert={(alert) => {
+                setSelectedAlert(alert);
+                navigateTo('ALERT_DETAILS');
+              }}
+            />
+          )}
+
+          {screen === 'ALERT_DETAILS' && (
+            <AlertDetailsScreen
+              alert={selectedAlert}
+              onBack={() => navigateTo('ROAD_ALERTS')}
+              onOpenMap={() => navigateTo('MAP')}
+            />
+          )}
+
+          {screen === 'SAFETY_TIPS' && (
+            <SafetyTipsScreen
+              onSelectTip={(tip) => {
+                setSelectedTip(tip);
+                navigateTo('SAFETY_TIP_DETAILS');
+              }}
+              onBack={() => navigateTo('HOME')}
+            />
+          )}
+
+          {screen === 'SAFETY_TIP_DETAILS' && (
+            <SafetyTipDetailsScreen tip={selectedTip} onBack={() => navigateTo('SAFETY_TIPS')} />
+          )}
+
+          {screen === 'NOTIFICATIONS' && (
+            <NotificationsScreen
+              onSelectAlert={(alert) => {
+                setSelectedAlert(alert);
+                navigateTo('ALERT_DETAILS');
+              }}
+            />
+          )}
+
+          {screen === 'PROFILE' && (
+            <ProfileScreen onLogout={handleLogout} onNavigate={(target) => navigateTo(target)} />
+          )}
+
+          {screen === 'EDIT_PROFILE' && (
+            <EditProfileScreen
+              user={user}
+              onSave={() => navigateTo('PROFILE')}
+              onBack={() => navigateTo('PROFILE')}
+            />
+          )}
+
+          {screen === 'CHANGE_PASSWORD' && (
+            <ChangePasswordScreen onBack={() => navigateTo('PROFILE')} />
+          )}
+
+          {screen === 'SETTINGS' && <SettingsScreen onBack={() => navigateTo('PROFILE')} />}
+
+          {screen === 'HELP_SUPPORT' && <HelpSupportScreen onBack={() => navigateTo('PROFILE')} />}
+
+          {screen === 'ABOUT' && <AboutScreen onBack={() => navigateTo('PROFILE')} />}
+
+          {screen === 'PRIVACY_POLICY' && <PrivacyPolicyScreen onBack={() => navigateTo('PROFILE')} />}
+
+          {screen === 'TERMS_CONDITIONS' && (
+            <TermsConditionsScreen onBack={() => navigateTo('PROFILE')} />
+          )}
+
+          {/* Quick-report FAB — only on the map */}
+          {screen === 'MAP' && (
+            <ReportFab
+              onPress={() => {
+                setReportType('ACCIDENT');
+                navigateTo('REPORT');
+              }}
+            />
+          )}
+        </View>
+
+        {TAB_SCREENS.includes(screen) && (
+          <TabBar
+            items={TAB_ITEMS}
+            activeKey={activeTabKey}
+            onSelect={(key) => navigateTo(key as ScreenState)}
           />
         )}
-
-        {screen === 'FORGOT_PASSWORD' && (
-          <ForgotPasswordScreen
-            onCodeSent={(email) => {
-              setResetEmail(email);
-              setScreen('RESET_PASSWORD');
-            }}
-            onBackToLogin={() => setScreen('AUTH')}
-          />
-        )}
-
-        {screen === 'RESET_PASSWORD' && (
-          <ResetPasswordScreen email={resetEmail} onSuccess={() => setScreen('RESET_SUCCESS')} />
-        )}
-
-        {screen === 'RESET_SUCCESS' && (
-          <ResetSuccessScreen onBackToLogin={() => setScreen('AUTH')} />
-        )}
-
-        {screen === 'EMAIL_VERIFICATION' && (
-          <EmailVerificationScreen
-            email={user?.email || 'user@safetyroad.gov.gh'}
-            onVerified={() => setScreen('HOME')}
-          />
-        )}
-
-        {screen === 'HOME' && (
-          <HomeScreen
-            onNavigateToReport={(type) => {
-              setReportType(type);
-              setScreen('REPORT');
-            }}
-            onNavigateToEmergency={() => setScreen('EMERGENCY')}
-            onNavigateToMap={() => setScreen('MAP')}
-            onNavigateToRoute={() => setScreen('ROUTE_PREVIEW')}
-            onChangeArea={() => setScreen('AREA_PICKER')}
-            onNavigateToAlerts={() => setScreen('ROAD_ALERTS')}
-            onNavigateToTips={() => setScreen('SAFETY_TIPS')}
-          />
-        )}
-
-        {screen === 'REPORT' && (
-          <ReportSubmitScreen
-            initialType={reportType}
-            onBack={() => setScreen('HOME')}
-            onSuccess={() => setScreen('REPORT_SUBMITTED')}
-          />
-        )}
-
-        {screen === 'LOCATION_PICKER' && (
-          <LocationPickerScreen
-            onLocationSelected={(name, lat, lng) => setScreen('REPORT')}
-            onCancel={() => setScreen('REPORT')}
-          />
-        )}
-
-        {screen === 'REPORT_SUBMITTED' && (
-          <ReportSubmittedScreen
-            onGoToTracking={() => setScreen('MY_REPORTS')}
-            onGoHome={() => setScreen('HOME')}
-          />
-        )}
-
-        {screen === 'MY_REPORTS' && (
-          <MyReportsScreen
-            onSelectReport={(report) => {
-              setSelectedReport(report);
-              setScreen('REPORT_DETAILS');
-            }}
-            onNewReport={() => {
-              setReportType('ACCIDENT');
-              setScreen('REPORT');
-            }}
-          />
-        )}
-
-        {screen === 'REPORT_DETAILS' && (
-          <ReportDetailsScreen
-            report={selectedReport}
-            onBack={() => setScreen('MY_REPORTS')}
-            onOpenMap={() => setScreen('MAP')}
-          />
-        )}
-
-        {screen === 'MAP' && (
-          <MapScreen
-            onNavigateToReport={(type) => {
-              setReportType(type);
-              setScreen('REPORT');
-            }}
-          />
-        )}
-
-        {screen === 'ROUTE_PREVIEW' && (
-          <RoutePreviewScreen onBack={() => setScreen('HOME')} />
-        )}
-
-        {screen === 'AREA_PICKER' && <AreaPickerScreen onDone={() => setScreen('HOME')} />}
-
-        {screen === 'EMERGENCY' && <EmergencyScreen onBack={() => setScreen('HOME')} />}
-
-        {screen === 'ROAD_ALERTS' && (
-          <NotificationsScreen
-            onSelectAlert={(alert) => {
-              setSelectedAlert(alert);
-              setScreen('ALERT_DETAILS');
-            }}
-          />
-        )}
-
-        {screen === 'ALERT_DETAILS' && (
-          <AlertDetailsScreen
-            alert={selectedAlert}
-            onBack={() => setScreen('ROAD_ALERTS')}
-            onOpenMap={() => setScreen('MAP')}
-          />
-        )}
-
-        {screen === 'SAFETY_TIPS' && (
-          <SafetyTipsScreen
-            onSelectTip={(tip) => {
-              setSelectedTip(tip);
-              setScreen('SAFETY_TIP_DETAILS');
-            }}
-            onBack={() => setScreen('HOME')}
-          />
-        )}
-
-        {screen === 'SAFETY_TIP_DETAILS' && (
-          <SafetyTipDetailsScreen tip={selectedTip} onBack={() => setScreen('SAFETY_TIPS')} />
-        )}
-
-        {screen === 'NOTIFICATIONS' && (
-          <NotificationsScreen
-            onSelectAlert={(alert) => {
-              setSelectedAlert(alert);
-              setScreen('ALERT_DETAILS');
-            }}
-          />
-        )}
-
-        {screen === 'PROFILE' && (
-          <ProfileScreen onLogout={handleLogout} onNavigate={(target) => setScreen(target)} />
-        )}
-
-        {screen === 'EDIT_PROFILE' && (
-          <EditProfileScreen
-            user={user}
-            onSave={() => setScreen('PROFILE')}
-            onBack={() => setScreen('PROFILE')}
-          />
-        )}
-
-        {screen === 'CHANGE_PASSWORD' && (
-          <ChangePasswordScreen onBack={() => setScreen('PROFILE')} />
-        )}
-
-        {screen === 'SETTINGS' && <SettingsScreen onBack={() => setScreen('PROFILE')} />}
-
-        {screen === 'HELP_SUPPORT' && <HelpSupportScreen onBack={() => setScreen('PROFILE')} />}
-
-        {screen === 'ABOUT' && <AboutScreen onBack={() => setScreen('PROFILE')} />}
-
-        {screen === 'PRIVACY_POLICY' && <PrivacyPolicyScreen onBack={() => setScreen('PROFILE')} />}
-
-        {screen === 'TERMS_CONDITIONS' && (
-          <TermsConditionsScreen onBack={() => setScreen('PROFILE')} />
-        )}
-
-        {/* Quick-report FAB — only on the map, where nothing else offers this
-            action. Home already leads with its two report tiles. */}
-        {screen === 'MAP' && (
-          <ReportFab
-            onPress={() => {
-              setReportType('ACCIDENT');
-              setScreen('REPORT');
-            }}
-          />
-        )}
-      </View>
-
-      {TAB_SCREENS.includes(screen) && (
-        <TabBar
-          items={TAB_ITEMS}
-          activeKey={activeTabKey}
-          onSelect={(key) => setScreen(key as ScreenState)}
-        />
-      )}
-    </SafeAreaView>
+      </SafeAreaView>
     </AreaProvider>
   );
 }

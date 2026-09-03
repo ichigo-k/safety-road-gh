@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, normalizeRole, signToken } from '@/lib/auth';
+import { normalizeRole, signToken } from '@/lib/auth';
+import { hashPassword } from '@/lib/password';
 
 // Reads the database per request: never prerender or cache at build time.
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 });
     }
 
-    const password_hash = await hashPassword(password);
+    const password_hash = hashPassword(password);
     const userRole = role === 'ADMIN' ? 'ADMIN' : role === 'RESPONDER' ? 'RESPONDER' : 'CITIZEN';
 
     const user = await prisma.user.create({
