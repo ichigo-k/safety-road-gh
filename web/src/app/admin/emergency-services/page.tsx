@@ -186,7 +186,12 @@ export default function AdminEmergencyServicesPage() {
                       <span className={`inline-flex rounded-xs px-2 py-1 text-micro font-semibold ${meta.pill}`}>
                         {meta.label}
                       </span>
-                      <span className="text-micro text-ink-500">{service.region}</span>
+                      {/* EmergencyService has no `region` column, so this printed the
+                          literal string "undefined" on every card. Render it only if a
+                          value ever arrives. See the note on the Region field below. */}
+                      {service.region ? (
+                        <span className="text-micro text-ink-500">{service.region}</span>
+                      ) : null}
                     </div>
 
                     <h3 className="mt-2.5 text-body font-semibold text-ink-900 leading-snug">{service.name}</h3>

@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   Car,
+  ChevronRight,
   FileText,
   HeartPulse,
-  ImageOff,
   MapPin,
   RefreshCw,
   Search,
@@ -24,65 +25,28 @@ import {
   Surface,
   TypeTag,
 } from '@/components/ui';
-
-interface ReportItem {
-  id: string;
-  type: string;
-  hazardCategory?: string;
-  title: string;
-  description: string;
-  injuredCount: number;
-  vehicleCount: number;
-  latitude: number;
-  longitude: number;
-  locationName: string;
-  photoUrl?: string;
-  status: string;
-  createdAt: string;
-  user: { id: string; name: string; email: string; phone?: string };
-}
+import { formatReportDate, ReportPhoto, type ReportItem } from './shared';
 
 type StatusFilter = 'ALL' | 'PENDING' | 'VERIFIED' | 'DISPATCHED' | 'RESOLVED' | 'REJECTED';
 type TypeFilter = 'ALL' | 'ACCIDENT' | 'HAZARD';
 
-function ReportCardSkeleton() {
+/* One row per report.
+ *
+ * This was a three-column grid of cards. Cards gave each report a big photo
+ * and a lot of padding, which meant three or four reports filled the screen
+ * and comparing them meant scrolling. A queue that gets worked top to bottom
+ * reads better as a list: same fields, aligned in columns, many more visible
+ * at once. */
+function ReportRowSkeleton() {
   return (
-    <Surface className="overflow-hidden">
-      <Skeleton className="h-36 w-full rounded-none" />
-      <div className="p-4">
-        <Skeleton className="h-5 w-20 rounded-xs" />
-        <Skeleton className="mt-3 h-4 w-3/4" />
-        <Skeleton className="mt-2 h-3 w-full" />
-        <Skeleton className="mt-4 h-3 w-1/2" />
+    <div className="flex items-center gap-4 px-4 py-3.5">
+      <Skeleton className="h-12 w-12 shrink-0 rounded-sm" />
+      <div className="min-w-0 flex-1">
+        <Skeleton className="h-4 w-1/3" />
+        <Skeleton className="mt-2 h-3 w-2/3" />
       </div>
-    </Surface>
-  );
-}
-
-/* Photos come from user uploads, so a dead URL is normal. Show a labelled
-   placeholder rather than a broken-image icon with alt text spilling out. */
-function ReportPhoto({ src, alt, className }: { src: string; alt: string; className: string }) {
-  const [failed, setFailed] = useState(false);
-
-  if (failed) {
-    return (
-      <div className={`flex items-center justify-center bg-ink-50 ${className}`}>
-        <span className="flex items-center gap-2 text-caption text-ink-400">
-          <ImageOff className="h-4 w-4" />
-          Photo unavailable
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt={alt}
-      onError={() => setFailed(true)}
-      className={`object-cover ${className}`}
-    />
+      <Skeleton className="hidden h-5 w-20 rounded-xs sm:block" />
+    </div>
   );
 }
 
@@ -92,9 +56,6 @@ export default function AdminReportsPage() {
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('ALL');
   const [filterType, setFilterType] = useState<TypeFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selected, setSelected] = useState<ReportItem | null>(null);
-  const [updateNotes, setUpdateNotes] = useState('');
-  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
 
   const fetchReports = useCallback(async () => {
@@ -114,41 +75,6 @@ export default function AdminReportsPage() {
   useEffect(() => {
     fetchReports();
   }, [fetchReports]);
-
-  // Escape closes the detail dialog — never trap the operator inside it.
-  useEffect(() => {
-    if (!selected) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSelected(null);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [selected]);
-
-  const handleStatusUpdate = async (id: string, status: string) => {
-    setUpdating(true);
-    setError('');
-    try {
-      const token = localStorage.getItem('adminToken');
-      const res = await fetch(`/api/v1/reports/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ status, notes: updateNotes || `Updated to ${status}` }),
-      });
-      if (res.ok) {
-        setUpdateNotes('');
-        setSelected(null);
-        fetchReports();
-      } else {
-        setError('Update failed. Your session may have expired — sign in again.');
-      }
-    } catch {
-      setError('Network error. The change was not saved.');
-    } finally {
-      setUpdating(false);
-    }
-  };
 
   const filtered = reports.filter((r) => {
     if (filterStatus !== 'ALL' && r.status !== filterStatus) return false;
@@ -264,13 +190,13 @@ export default function AdminReportsPage() {
         </div>
       </div>
 
-      {/* ── Grid ─────────────────────────────────────────────────────────── */}
+      {/* ── List ─────────────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <ReportCardSkeleton key={i} />
+        <Surface className="divide-y divide-line">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ReportRowSkeleton key={i} />
           ))}
-        </div>
+        </Surface>
       ) : filtered.length === 0 ? (
         <Surface>
           <EmptyState
@@ -298,180 +224,72 @@ export default function AdminReportsPage() {
           />
         </Surface>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Surface className="divide-y divide-line overflow-hidden">
           {filtered.map((report) => (
-            <Surface
+            <Link
               key={report.id}
-              as="article"
-              className="flex flex-col overflow-hidden transition-shadow duration-150 hover:shadow-card"
+              href={`/admin/reports/${report.id}`}
+              className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-ink-50 focus:bg-ink-50 focus:outline-none"
             >
+              {/* Thumbnail: enough to recognise the scene, not enough to
+                  dominate the row. */}
               {report.photoUrl ? (
-                <ReportPhoto src={report.photoUrl} alt={report.title} className="h-36 w-full" />
-              ) : null}
-
-              <div className="flex flex-1 flex-col p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <TypeTag type={report.type} />
-                  <StatusPill status={report.status} />
-                </div>
-
-                <h3 className="mt-3 text-base font-semibold text-ink-900">
-                  {sentenceCase(report.title)}
-                </h3>
-                <p className="mt-1 line-clamp-2 text-body text-ink-500">{report.description}</p>
-
-                <div className="mt-3 space-y-1.5 text-caption text-ink-500">
-                  <p className="flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-ink-400" />
-                    <span className="truncate">{report.locationName}</span>
-                  </p>
-                  <p className="flex items-center gap-4">
-                    <span className="flex items-center gap-1.5">
-                      <HeartPulse className="h-3.5 w-3.5 text-danger" />
-                      <span className="tabular">{report.injuredCount}</span> injured
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Car className="h-3.5 w-3.5 text-ink-400" />
-                      <span className="tabular">{report.vehicleCount}</span> vehicles
-                    </span>
-                  </p>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between border-t border-line pt-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-caption font-medium text-ink-800">
-                      {report.user.name}
-                    </p>
-                    <p className="tabular text-micro text-ink-400">
-                      {new Date(report.createdAt).toLocaleDateString('en-GB', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                  <Button size="sm" variant="secondary" onClick={() => setSelected(report)}>
-                    Review
-                  </Button>
-                </div>
-              </div>
-            </Surface>
-          ))}
-        </div>
-      )}
-
-      {/* ── Detail dialog ────────────────────────────────────────────────── */}
-      {selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/40 p-4 sm:items-center"
-          onClick={() => setSelected(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={selected.title}
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-xl bg-surface shadow-overlay"
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <TypeTag type={selected.type} />
-                  <StatusPill status={selected.status} />
-                </div>
-                <h2 className="mt-2 text-title font-semibold text-ink-900">
-                  {sentenceCase(selected.title)}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                aria-label="Close"
-                className="shrink-0 rounded-xs p-1.5 text-ink-400 transition-colors hover:bg-ink-50 hover:text-ink-900"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {selected.photoUrl ? (
-              <ReportPhoto src={selected.photoUrl} alt={selected.title} className="h-52 w-full" />
-            ) : null}
-
-            <div className="space-y-4 p-5">
-              <p className="rounded-sm bg-ink-50 px-4 py-3 text-body leading-6 text-ink-700">
-                {selected.description}
-              </p>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-sm border border-line p-3">
-                  <p className="text-micro font-medium text-ink-500">Location</p>
-                  <p className="mt-1 text-body font-medium text-ink-900">
-                    {selected.locationName}
-                  </p>
-                  <p className="tabular mt-0.5 text-caption text-ink-500">
-                    {selected.latitude.toFixed(4)}, {selected.longitude.toFixed(4)}
-                  </p>
-                </div>
-                <div className="rounded-sm border border-line p-3">
-                  <p className="text-micro font-medium text-ink-500">Reporter</p>
-                  <p className="mt-1 text-body font-medium text-ink-900">{selected.user.name}</p>
-                  <p className="mt-0.5 text-caption text-ink-500">
-                    {selected.user.phone ?? selected.user.email}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-sm border border-line p-4">
-                <label
-                  htmlFor="update-notes"
-                  className="text-body font-medium text-ink-800"
-                >
-                  Update status
-                </label>
-                <textarea
-                  id="update-notes"
-                  value={updateNotes}
-                  onChange={(e) => setUpdateNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Add dispatch or verification notes"
-                  className="mt-2 w-full resize-none rounded-sm border border-line px-3 py-2 text-body text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-brand"
+                <ReportPhoto
+                  src={report.photoUrl}
+                  alt=""
+                  compact
+                  className="h-12 w-12 shrink-0 rounded-sm bg-ink-50"
                 />
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    disabled={updating}
-                    onClick={() => handleStatusUpdate(selected.id, 'VERIFIED')}
-                  >
-                    Verify
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={updating}
-                    onClick={() => handleStatusUpdate(selected.id, 'DISPATCHED')}
-                  >
-                    Dispatch
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={updating}
-                    onClick={() => handleStatusUpdate(selected.id, 'RESOLVED')}
-                  >
-                    Resolve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    disabled={updating}
-                    onClick={() => handleStatusUpdate(selected.id, 'REJECTED')}
-                  >
-                    Reject
-                  </Button>
+              ) : (
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-ink-50">
+                  <FileText className="h-4 w-4 text-ink-400" />
                 </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="truncate text-body font-semibold text-ink-900">
+                    {sentenceCase(report.title)}
+                  </span>
+                  <TypeTag type={report.type} />
+                </div>
+                <p className="mt-1 flex items-center gap-1.5 text-caption text-ink-500">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+                  <span className="truncate">{report.locationName}</span>
+                </p>
               </div>
-            </div>
-          </div>
-        </div>
+
+              {/* Casualty counts: the number that decides how urgent this is,
+                  so it gets its own aligned column instead of being buried in
+                  a paragraph. */}
+              <div className="hidden w-32 shrink-0 items-center gap-4 md:flex">
+                <span className="flex items-center gap-1.5 text-caption text-ink-500">
+                  <HeartPulse className="h-3.5 w-3.5 text-danger" />
+                  <span className="tabular">{report.injuredCount}</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-caption text-ink-500">
+                  <Car className="h-3.5 w-3.5 text-ink-400" />
+                  <span className="tabular">{report.vehicleCount}</span>
+                </span>
+              </div>
+
+              <div className="hidden w-40 shrink-0 lg:block">
+                <p className="truncate text-caption font-medium text-ink-800">
+                  {report.user.name}
+                </p>
+                <p className="tabular text-micro text-ink-400">
+                  {formatReportDate(report.createdAt)}
+                </p>
+              </div>
+
+              <div className="shrink-0">
+                <StatusPill status={report.status} />
+              </div>
+
+              <ChevronRight className="h-4 w-4 shrink-0 text-ink-400" />
+            </Link>
+          ))}
+        </Surface>
       )}
     </div>
   );
