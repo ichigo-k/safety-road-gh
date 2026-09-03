@@ -18,23 +18,23 @@ config.transformer.babelTransformerPath = require.resolve(
 config.resolver.assetExts = config.resolver.assetExts.filter((ext) => ext !== 'svg');
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'svg'];
 
-// ─── Block web-only packages from the native bundle ───────────────────────────
+// ─── Block web-only packages from the native bundle ───────────────────────
 //
-// `azure-maps-control` and its transitive dependency `@mapbox/mapbox-gl-supported`
-// call `URL.createObjectURL()` at module-evaluation time — a browser-only API
-// that doesn't exist in React Native's JS environment.  If either package lands
-// in the native bundle the app crashes on launch with:
+// `azure-maps-control` and its transitive `@mapbox/*` dependencies call
+// `URL.createObjectURL()` at module-evaluation time — a browser-only API that
+// doesn't exist in React Native's JS environment. If any of them land in the
+// native bundle the app crashes on launch with:
 //
 //   JavascriptException: [runtime not ready]:
 //     TypeError: undefined is not a function (createObjectURL)
 //
-// These packages are only used by `MapViewComponent/index.web.tsx`.
-// Metro should resolve `index.native.tsx` first for native targets, but this
-// blockList is a hard safety net against any future accidental import path.
+// They are used only by `MapViewComponent/index.web.tsx`, which platform
+// extensions already keep out of the native graph. This is the safety net for
+// a future accidental import.
 //
-// NOTE: This blockList only applies to the native Metro bundler.  The Expo
-// web export (npx expo export --platform web) uses a separate bundler pass
-// and is unaffected — azure-maps-control works fine on the web build.
+// It is enforced per-platform through `resolveRequest` rather than through
+// `resolver.blockList`: blockList is global, so blocking these packages there
+// also broke `expo export --platform web`, where they are legitimately needed.
 const WEB_ONLY_PACKAGES = [
   'azure-maps-control',
   '@mapbox/mapbox-gl-supported',
@@ -42,25 +42,31 @@ const WEB_ONLY_PACKAGES = [
   '@mapbox/jsonlint-lines-primitives',
 ];
 
-// Build regex patterns that match any path inside these packages
-const blockListPatterns = WEB_ONLY_PACKAGES.map(
-  (pkg) =>
-    new RegExp(
-      // Escape @ and / for use in regex, match node_modules/<pkg>/...
-      `node_modules[/\\\\]${pkg
-        .replace(/@/g, '@')
-        .replace(/\//g, '[/\\\\]')}[/\\\\]`
-    )
-);
+const NATIVE_PLATFORMS = new Set(['android', 'ios']);
 
-// Merge with any existing blockList Expo may have set
-const existingBlockList = config.resolver.blockList;
-if (existingBlockList) {
-  config.resolver.blockList = Array.isArray(existingBlockList)
-    ? [...existingBlockList, ...blockListPatterns]
-    : [existingBlockList, ...blockListPatterns];
-} else {
-  config.resolver.blockList = blockListPatterns;
-}
+const isWebOnlyPackage = (moduleName) =>
+  WEB_ONLY_PACKAGES.some(
+    (pkg) => moduleName === pkg || moduleName.startsWith(`${pkg}/`)
+  );
+
+// Metro passes the *default* resolver as `context.resolveRequest` inside a
+// custom `resolveRequest`, so delegating there is not recursive.
+const upstreamResolveRequest = config.resolver.resolveRequest;
+
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (NATIVE_PLATFORMS.has(platform) && isWebOnlyPackage(moduleName)) {
+    throw new Error(
+      `[metro.config.js] "${moduleName}" is web-only and must never be ` +
+        `imported from code that reaches the ${platform} bundle. It calls ` +
+        `browser-only APIs at module load and crashes the app on launch. ` +
+        `Move the import into a *.web.tsx file.`
+    );
+  }
+  return (upstreamResolveRequest ?? context.resolveRequest)(
+    context,
+    moduleName,
+    platform
+  );
+};
 
 module.exports = config;
