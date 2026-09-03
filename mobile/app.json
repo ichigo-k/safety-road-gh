@@ -29,7 +29,7 @@
     "android": {
       "package": "com.safetyroad.gh",
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#146b45",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "permissions": [
@@ -51,14 +51,14 @@
       "bundler": "metro",
       "output": "single",
       "description": "Ghana National Road Accident & Hazard Reporting Network \u2014 Instant Emergency Help & Live Hotspot Radar",
-      "themeColor": "#ffffff",
-      "backgroundColor": "#ffffff",
+      "themeColor": "#146b45",
+      "backgroundColor": "#0a1a0f",
       "meta": {
         "viewport": "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
         "apple-mobile-web-app-capable": "yes",
         "apple-mobile-web-app-status-bar-style": "default",
         "apple-mobile-web-app-title": "Safety Road GH",
-        "theme-color": "#ffffff"
+        "theme-color": "#146b45"
       }
     },
     "plugins": [
