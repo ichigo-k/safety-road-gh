@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "prisma generate && next build --webpack",
+    "build:full": "npm run build:pwa && npm run build",
+    "build:pwa": "cd ../mobile && npm run export:web && cd ../web && node scripts/copy-pwa.js",
     "start": "next start",
     "lint": "eslint",
     "hotspots:recompute": "npx tsx scripts/recompute-hotspots.ts",

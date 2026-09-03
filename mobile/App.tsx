@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
-import { getAuthToken, getUserData, removeAuthToken, removeUserData } from './src/services/api';
+import { getAuthToken, getUserData, removeAuthToken, removeUserData, setUnauthorizedHandler } from './src/services/api';
 import TabBar, { ReportFab, TabItem } from './src/components/TabBar';
 import { colors } from './src/theme';
 import { AreaProvider } from './src/services/area';
@@ -124,6 +124,12 @@ export default function App() {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Register the global 401 handler so any apiFetch call that gets a 401
+  // (expired/invalid token) will wipe the session and return to AUTH.
+  useEffect(() => {
+    setUnauthorizedHandler(handleUnauthorized);
+  }, [handleUnauthorized]);
 
   const checkAuth = async () => {
     try {

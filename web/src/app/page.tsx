@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Download, LayoutDashboard, ShieldCheck, Smartphone } from 'lucide-react';
-
 export const metadata = {
   title: 'Safety Road GH',
   description: 'Road accident and hazard reporting for Ghana.',
@@ -61,8 +60,8 @@ export default async function RootHomePage() {
   const apkDetail = release.apk
     ? `APK · ${release.version} · ${release.apk.sizeMb} MB`
     : release.available
-    ? `Latest release · ${release.version}`
-    : 'Latest release on GitHub';
+      ? `Latest release · ${release.version}`
+      : 'Latest release on GitHub';
 
   return (
     <main className="flex min-h-[100dvh] items-center justify-center bg-canvas px-5 py-12">
@@ -84,18 +83,12 @@ export default async function RootHomePage() {
 
         <div className="mt-8 flex flex-col gap-3">
           <Action
-            href="/app"
-            icon={<Smartphone className="h-5 w-5" strokeWidth={2.1} />}
-            title="Open the web app"
-            detail="Works in any browser · installable"
-            primary
-          />
-          <Action
             href={apkHref}
             icon={<Download className="h-5 w-5" strokeWidth={2.1} />}
             title="Download for Android"
             detail={apkDetail}
             external
+            primary
           />
           <Action
             href="/admin"

@@ -121,6 +121,12 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   }
 
   if (!response.ok) {
+    // A 401 means the token is missing or expired. Fire the global handler
+    // (set by App.tsx) so the session is wiped and the user lands on AUTH
+    // regardless of which screen triggered the request.
+    if (response.status === 401 && _onUnauthorized) {
+      _onUnauthorized();
+    }
     throw new Error(data.error || `Request failed (${response.status})`);
   }
 
