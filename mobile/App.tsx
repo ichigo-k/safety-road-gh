@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
+import { Platform, StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
 import { getAuthToken, getUserData, removeAuthToken, removeUserData, setUnauthorizedHandler } from './src/services/api';
 import TabBar, { ReportFab, TabItem } from './src/components/TabBar';
-import { colors } from './src/theme';
+import { colors, spacing } from './src/theme';
 import { AreaProvider } from './src/services/area';
 
 // Side-effect import: registers the background geofence task.
@@ -77,6 +77,17 @@ export type ScreenState =
   | 'ABOUT'
   | 'PRIVACY_POLICY'
   | 'TERMS_CONDITIONS';
+
+/* ── Top inset ────────────────────────────────────────────────────────
+ * React Native's SafeAreaView only insets on iOS — on Android it is a plain
+ * View. Android has drawn edge-to-edge by default since Expo SDK 54, so
+ * every screen's content started flush against the status bar and clock.
+ *
+ * Pad the shell once here instead of touching all 28 screens. iOS gets only
+ * the small breathing gap, since SafeAreaView already clears the notch.
+ * ────────────────────────────────────────────────────────────── */
+const TOP_INSET =
+  (Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 0) + spacing.sm;
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenState>('SPLASH');
@@ -215,7 +226,9 @@ export default function App() {
     <AreaProvider>
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-        <View style={styles.content}>
+        {/* SPLASH is full-bleed dark green — a light strip above it would
+            read as a rendering glitch, so it opts out of the inset. */}
+        <View style={[styles.content, screen !== 'SPLASH' && styles.inset]}>
           {screen === 'SPLASH' && <SplashScreen onFinish={handleFinishSplash} />}
 
           {screen === 'ONBOARDING' && <OnboardingScreen onFinish={handleFinishOnboarding} />}
@@ -425,5 +438,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  inset: {
+    paddingTop: TOP_INSET,
   },
 });
