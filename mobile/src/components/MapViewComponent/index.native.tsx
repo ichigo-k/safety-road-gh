@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import MapView, {
   Circle,
   Marker,
@@ -115,6 +116,39 @@ function hotspotStyle(marker: MapMarkerData): {
   }
 }
 
+/* ── Google Maps key guard (Android) ──────────────────────────────────
+ *
+ * react-native-maps on Android is Google Maps, and its MapView throws
+ * IllegalStateException("API key not found") from onCreate the moment it
+ * attaches to the window. Under Fabric that surfaces as a fatal
+ * "addViewAt: failed to insert view" and takes the whole app down — opening
+ * the Map tab killed the process outright.
+ *
+ * A missing key is a build-configuration problem, not something the user can
+ * act on, but it must not be a crash. Render the placeholder instead: the rest
+ * of the app stays usable and the reason is visible rather than silent.
+ *
+ * iOS uses Apple Maps and needs no key, so this only gates Android.
+ * ─────────────────────────────────────────────────────────────────── */
+const GOOGLE_MAPS_KEY =
+  (Constants.expoConfig?.extra?.googleMapsApiKey as string | null | undefined) ??
+  (Constants.expoConfig?.android?.config?.googleMaps?.apiKey as string | undefined) ??
+  null;
+
+const MAPS_UNAVAILABLE = Platform.OS === 'android' && !GOOGLE_MAPS_KEY;
+
+function MapUnavailable({ style }: { style?: any }) {
+  return (
+    <View style={[styles.unavailable, style]}>
+      <Text style={styles.unavailableTitle}>Map unavailable</Text>
+      <Text style={styles.unavailableBody}>
+        This build is missing its Google Maps key, so the map cannot be drawn.
+        Reports and alerts still work everywhere else in the app.
+      </Text>
+    </View>
+  );
+}
+
 // ─── Native Map Component ─────────────────────────────────────────────────────
 
 export default function MapViewComponent({
@@ -151,6 +185,10 @@ export default function MapViewComponent({
     });
     return { incidentMarkers: incident, otherMarkers: other };
   }, [markers]);
+
+  if (MAPS_UNAVAILABLE) {
+    return <MapUnavailable style={style} />;
+  }
 
   return (
     <MapView
@@ -321,6 +359,26 @@ export default function MapViewComponent({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  unavailable: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#EEF2F0',
+  },
+  unavailableTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2A24',
+    marginBottom: 6,
+  },
+  unavailableBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#5A6B62',
+    textAlign: 'center',
+    maxWidth: 280,
+  },
   dot: {
     width: 16,
     height: 16,

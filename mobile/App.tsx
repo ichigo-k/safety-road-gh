@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Platform, StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
+import { BackHandler, Platform, StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
 import { getAuthToken, getUserData, removeAuthToken, removeUserData, setUnauthorizedHandler } from './src/services/api';
 import TabBar, { ReportFab, TabItem } from './src/components/TabBar';
 import { colors, spacing } from './src/theme';
@@ -112,15 +112,62 @@ export default function App() {
     'SETTINGS', 'HELP_SUPPORT', 'ABOUT', 'PRIVACY_POLICY', 'TERMS_CONDITIONS',
   ]);
 
+  /* ── Navigation history ─────────────────────────────────────────────
+   *
+   * Screens are one piece of state with no stack behind them, so Android's
+   * back gesture had nothing to pop and fell through to the OS — every back
+   * swipe closed the app, no matter how deep you were. Only the on-screen
+   * back arrows worked, because they call setScreen explicitly.
+   *
+   * This keeps the trail of screens actually visited. Back pops it; when it
+   * is empty the gesture falls through and closes the app, which is what
+   * Android users expect at a root screen.
+   *
+   * Capped because a user can bounce between tabs indefinitely and this would
+   * otherwise grow for the life of the process.
+   * ───────────────────────────────────────────────────────────────── */
+  const historyRef = useRef<ScreenState[]>([]);
+  const MAX_HISTORY = 40;
+
+  /* Enter a new section with no way back into the old one — signing in, signing
+   * out, or being signed out. Leaving the trail intact after any of those would
+   * let back re-open a screen the user no longer has a session for. */
+  const resetTo = useCallback((target: ScreenState) => {
+    historyRef.current = [];
+    setScreen(target);
+  }, []);
+
   /* Safe navigation: redirect to AUTH if trying to reach a protected screen
    * without a session. Use this everywhere instead of setScreen directly. */
   const navigateTo = useCallback((target: ScreenState) => {
     if (PROTECTED_SCREENS.has(target) && !hasSession.current) {
-      setScreen('AUTH');
+      resetTo('AUTH');
       return;
     }
-    setScreen(target);
+    setScreen((current) => {
+      if (current !== target) {
+        historyRef.current = [...historyRef.current, current].slice(-MAX_HISTORY);
+      }
+      return target;
+    });
   }, []);
+
+  /** Pop one screen. Returns false when there is nothing left to pop. */
+  const goBack = useCallback((): boolean => {
+    const trail = historyRef.current;
+    if (trail.length === 0) return false;
+    const previous = trail[trail.length - 1];
+    historyRef.current = trail.slice(0, -1);
+    setScreen(previous);
+    return true;
+  }, []);
+
+  /* Android hardware/gesture back. Returning true swallows the event; false
+   * lets Android close the app. */
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => goBack());
+    return () => sub.remove();
+  }, [goBack]);
 
   /* Global 401 handler — called by apiFetch when a token is rejected.
    * Wipes the session and sends the user back to the login screen. */
@@ -129,8 +176,8 @@ export default function App() {
     setUser(null);
     removeAuthToken();
     removeUserData();
-    setScreen('AUTH');
-  }, []);
+    resetTo('AUTH');
+  }, [resetTo]);
 
   useEffect(() => {
     checkAuth();
@@ -158,17 +205,17 @@ export default function App() {
   // overwrite the authenticated redirect and send a signed-in user back
   // through onboarding.
   const handleFinishSplash = () => {
-    setScreen(hasSession.current ? 'HOME' : 'ONBOARDING');
+    resetTo(hasSession.current ? 'HOME' : 'ONBOARDING');
   };
 
   const handleFinishOnboarding = () => {
-    setScreen('AUTH');
+    resetTo('AUTH');
   };
 
   const handleLoginSuccess = (userData: any) => {
     hasSession.current = true;
     setUser(userData);
-    setScreen('HOME');
+    resetTo('HOME');
   };
 
   const handleLogout = async () => {
@@ -176,7 +223,7 @@ export default function App() {
     setUser(null);
     await removeAuthToken();
     await removeUserData();
-    setScreen('AUTH');
+    resetTo('AUTH');
   };
   // Which tab lights up for the current screen — detail screens keep their
   // parent tab active.
