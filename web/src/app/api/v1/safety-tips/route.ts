@@ -15,7 +15,22 @@ export async function GET(req: NextRequest) {
       orderBy: { created_at: 'desc' },
     });
 
-    return NextResponse.json({ tips });
+    // This route was returning raw Prisma rows while every client reads the
+    // camelCase shape the other routes emit — so `content` and `createdAt`
+    // were undefined, leaving blank tip bodies in the admin and the mobile
+    // app and an "Invalid Date" on every card. The POST handler already
+    // accepts `content`, so this brings the read side in line.
+    return NextResponse.json({
+      tips: tips.map((tip) => ({
+        id: tip.id,
+        category: tip.category,
+        title: tip.title,
+        content: tip.description,
+        description: tip.description,
+        imageUrl: tip.image_url,
+        createdAt: tip.created_at,
+      })),
+    });
   } catch (error: any) {
     return NextResponse.json({ error: 'Failed to fetch safety tips' }, { status: 500 });
   }

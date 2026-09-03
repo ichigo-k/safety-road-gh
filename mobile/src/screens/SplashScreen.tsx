@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import Icon from '../components/Icon';
-import { colors, typography, spacing, radius, shadows } from '../theme';
+import { colors, typography, spacing, radius } from '../theme';
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -72,7 +72,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
 
       <View style={styles.content}>
         {/* Brand Shield Mark */}
@@ -95,7 +95,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
             ]}
           />
           <View style={styles.shield}>
-            <Icon name="shield" size={40} color="#ffffff" />
+            <Icon name="shield-filled" size={40} color={colors.primaryDark} />
           </View>
         </Animated.View>
 
@@ -118,7 +118,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.primaryDark,
   },
   content: {
     flex: 1,
@@ -137,16 +137,16 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: colors.primaryLight,
+    // White at low alpha: a solid ring would read as a hard disc on green.
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
   shield: {
     width: 72,
     height: 72,
-    backgroundColor: colors.primary,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.floating,
   },
   textBlock: {
     alignItems: 'center',
@@ -154,18 +154,18 @@ const styles = StyleSheet.create({
   appName: {
     ...typography.display,
     fontSize: 28,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
   },
   country: {
     ...typography.label,
     fontSize: 12,
-    color: colors.primaryDark,
+    color: 'rgba(255,255,255,0.72)',
     letterSpacing: 3,
     marginTop: 4,
   },
   subtext: {
     ...typography.caption,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.78)',
     marginTop: spacing.sm,
   },
   footer: {
@@ -175,6 +175,6 @@ const styles = StyleSheet.create({
   footerText: {
     ...typography.caption,
     fontSize: 11,
-    color: colors.textTertiary,
+    color: 'rgba(255,255,255,0.55)',
   },
 });

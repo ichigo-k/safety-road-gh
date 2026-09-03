@@ -16,7 +16,14 @@
       "bundleIdentifier": "com.safetyroad.gh",
       "infoPlist": {
         "NSCameraUsageDescription": "Safety Road GH uses camera access to capture photographic evidence of road accidents and hazards.",
-        "NSLocationWhenInUseUsageDescription": "Safety Road GH uses your location to pinpoint accident hotspots and alert you when approaching dangerous road hazards."
+        "NSLocationWhenInUseUsageDescription": "Safety Road GH uses your location to show accident hotspots near you and warn you before you reach a dangerous stretch of road.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Safety Road GH checks your location in the background so it can warn you about accident hotspots and road hazards ahead, even when the app is not open.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ],
+        "CADisableMinimumFrameDurationOnPhone": true
       }
     },
     "android": {
@@ -28,6 +35,11 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -38,7 +50,7 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "description": "Ghana National Road Accident & Hazard Reporting Network — Instant Emergency Help & Live Hotspot Radar",
+      "description": "Ghana National Road Accident & Hazard Reporting Network \u2014 Instant Emergency Help & Live Hotspot Radar",
       "themeColor": "#ffffff",
       "backgroundColor": "#ffffff",
       "meta": {
@@ -50,7 +62,24 @@
       }
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Safety Road GH checks your location in the background so it can warn you about accident hotspots and road hazards ahead, even when the app is not open.",
+          "locationWhenInUsePermission": "Safety Road GH uses your location to show accident hotspots near you and warn you before you reach a dangerous stretch of road.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#146B45",
+          "defaultChannel": "hotspot-alerts"
+        }
+      ],
+      "expo-task-manager"
     ]
   }
 }

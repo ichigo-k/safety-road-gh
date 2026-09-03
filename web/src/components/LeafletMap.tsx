@@ -78,7 +78,7 @@ function hotspotStyle(cluster: Cluster) {
   if (allResolved) {
     // Resolved cluster — small calm green
     const r = 7 + Math.min(count, 5) * 1.5;
-    return { radius: r, fillColor: '#22c55e', fillOpacity: 0.75, color: '#fff', weight: 2 };
+    return { radius: r, fillColor: '#1F7A4D', fillOpacity: 0.75, color: '#fff', weight: 2 };
   }
 
   // Intensity scale: 1 → 0.55 opacity/small; 10+ → 1.0 opacity/large
@@ -101,7 +101,7 @@ function hotspotStyle(cluster: Cluster) {
     };
   } else {
     // Amber-orange for hazard clusters
-    const fill = intensity > 0.5 ? '#f97316' : '#f59e0b';
+    const fill = intensity > 0.5 ? '#BC3B2F' : '#B4661C';
     return {
       radius,
       fillColor: fill,
@@ -120,7 +120,7 @@ function RecenterControl({ center }: { center: [number, number] }) {
       type="button"
       aria-label="Recenter map"
       onClick={() => map.flyTo(center, 12, { duration: 0.7 })}
-      className="absolute right-4 top-4 z-[500] flex h-10 w-10 items-center justify-center rounded-xl border border-white/80 bg-white text-[#0e7a3f] shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition hover:bg-[#f3fff6] active:scale-95"
+      className="absolute right-4 top-[68px] z-[500] md:top-[76px] flex h-10 w-10 items-center justify-center rounded-sm border border-line bg-surface text-brand shadow-float transition-colors hover:bg-brand-soft active:scale-95"
     >
       <LocateFixed className="h-4 w-4" />
     </button>
@@ -137,51 +137,51 @@ function ClusterPopup({ cluster }: { cluster: Cluster }) {
       {cluster.count > 1 ? (
         <>
           <p
-            className="text-[10px] font-bold uppercase tracking-[.14em]"
-            style={{ color: cluster.dominantType === 'ACCIDENT' ? '#dc2626' : '#f97316' }}
+            className="text-micro font-semibold"
+            style={{ color: cluster.dominantType === 'ACCIDENT' ? '#BC3B2F' : '#B4661C' }}
           >
             {cluster.count} incidents in area
           </p>
-          <div className="mt-2 space-y-1 text-xs text-[#374151]">
+          <div className="mt-2 space-y-1 text-caption text-ink-700">
             {pendingCount > 0 && (
               <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                <span className="h-1.5 w-1.5 rounded-full bg-warn" />
                 {pendingCount} pending review
               </div>
             )}
             {resolvedCount > 0 && (
               <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="h-1.5 w-1.5 rounded-full bg-ok" />
                 {resolvedCount} resolved
               </div>
             )}
           </div>
-          <div className="mt-3 space-y-1.5 border-t border-gray-100 pt-2">
+          <div className="mt-3 space-y-1.5 border-t border-line pt-2">
             {cluster.points.slice(0, 3).map((p) => (
-              <p key={p.id} className="truncate text-xs font-medium text-[#111827]">
+              <p key={p.id} className="truncate text-caption font-medium text-ink-900">
                 {p.title}
               </p>
             ))}
             {cluster.points.length > 3 && (
-              <p className="text-[10px] text-[#6b7280]">+{cluster.points.length - 3} more</p>
+              <p className="text-micro text-ink-500">+{cluster.points.length - 3} more</p>
             )}
           </div>
         </>
       ) : (
         <>
           <p
-            className="text-[10px] font-bold uppercase tracking-[.14em]"
-            style={{ color: cluster.dominantType === 'ACCIDENT' ? '#dc2626' : '#f97316' }}
+            className="text-micro font-semibold"
+            style={{ color: cluster.dominantType === 'ACCIDENT' ? '#BC3B2F' : '#B4661C' }}
           >
             {cluster.points[0].type}
           </p>
-          <p className="mt-1 text-sm font-bold text-[#111827]">{cluster.points[0].title}</p>
-          <p className="mt-0.5 text-xs text-[#6b7280]">{cluster.points[0].locationName}</p>
+          <p className="mt-1 text-body font-semibold text-ink-900">{cluster.points[0].title}</p>
+          <p className="mt-0.5 text-caption text-ink-500">{cluster.points[0].locationName}</p>
           <span
-            className="mt-2.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+            className="mt-2.5 inline-flex rounded-xs px-2 py-1 text-micro font-semibold"
             style={{
-              background: cluster.points[0].status === 'RESOLVED' ? '#dcfce7' : '#fef3c7',
-              color: cluster.points[0].status === 'RESOLVED' ? '#15803d' : '#92400e',
+              background: cluster.points[0].status === 'RESOLVED' ? '#E9F3ED' : '#FBF3E9',
+              color: cluster.points[0].status === 'RESOLVED' ? '#1F7A4D' : '#8A4E15',
             }}
           >
             {cluster.points[0].status}
@@ -212,7 +212,7 @@ export default function LeafletMap({
     <div
       className={
         fullscreen
-          ? 'relative h-full w-full overflow-hidden'
+          ? 'map-fullscreen relative h-full w-full overflow-hidden'
           : 'relative h-full min-h-[360px] overflow-hidden rounded-[20px]'
       }
     >

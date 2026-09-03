@@ -15,3 +15,7 @@ dist/
 build/
 .DS_Store
 *.log
+
+# Local SQLite, superseded by Neon Postgres
+web/prisma/dev.db
+web/prisma/*.db-journal

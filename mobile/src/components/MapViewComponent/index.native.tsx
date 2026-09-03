@@ -4,8 +4,29 @@ import MapView, {
   Circle,
   Marker,
   Callout,
+  Polyline,
+  UrlTile,
   PROVIDER_DEFAULT,
 } from 'react-native-maps';
+
+/* ── Azure Maps basemap ───────────────────────────────────────────────────
+ * Azure serves raster tiles over a plain XYZ URL, so it drops straight into
+ * react-native-maps as a UrlTile overlay on top of the platform provider.
+ * That keeps one basemap across mobile and the web admin instead of Apple
+ * Maps on iOS, Google on Android and CARTO on the web.
+ *
+ * When the key is absent the overlay is simply omitted and the platform's own
+ * basemap shows through — a map with the wrong tiles beats a blank screen.
+ * ---------------------------------------------------------------------- */
+const AZURE_KEY = process.env.EXPO_PUBLIC_AZURE_MAPS_KEY;
+
+const AZURE_TILE_URL =
+  'https://atlas.microsoft.com/map/tile' +
+  '?api-version=2024-04-01' +
+  '&tilesetId=microsoft.base.road' +
+  '&zoom={z}&x={x}&y={y}' +
+  '&tileSize=256' +
+  `&subscription-key=${AZURE_KEY ?? ''}`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +41,8 @@ export interface MapMarkerData {
   color?: string;
   /** For clusters: how many reports are in this spot */
   clusterCount?: number;
+  /** Alert geofence radius in metres. */
+  radiusM?: number;
 }
 
 export interface MapViewComponentProps {
@@ -40,6 +63,8 @@ export interface MapViewComponentProps {
   }) => void;
   draggablePin?: { latitude: number; longitude: number };
   onPinDragEnd?: (coords: { latitude: number; longitude: number }) => void;
+  /** Route polyline, drawn beneath the markers. */
+  routePoints?: { latitude: number; longitude: number }[];
 }
 
 // ─── Hotspot sizing & color ───────────────────────────────────────────────────
@@ -96,6 +121,7 @@ export default function MapViewComponent({
   region,
   markers = [],
   onMarkerPress,
+  routePoints,
   style,
   onRegionChange,
   draggablePin,
@@ -140,6 +166,28 @@ export default function MapViewComponent({
       loadingEnabled
       onRegionChangeComplete={(r) => onRegionChange?.(r)}
     >
+      {/* Azure basemap sits beneath every overlay; zIndex -1 keeps hotspot
+          circles and markers drawn on top of it. */}
+      {AZURE_KEY ? (
+        <UrlTile
+          urlTemplate={AZURE_TILE_URL}
+          maximumZ={20}
+          minimumZ={1}
+          tileSize={256}
+          zIndex={-1}
+          shouldReplaceMapContent
+        />
+      ) : null}
+      {routePoints && routePoints.length > 1 ? (
+        <Polyline
+          coordinates={routePoints}
+          strokeColor="#2B5F9E"
+          strokeWidth={5}
+          lineJoin="round"
+          lineCap="round"
+        />
+      ) : null}
+
       {/* ── Hotspot circles ────────────────────────────────────────────── */}
       {incidentMarkers.map((m) => {
         const hs = hotspotStyle(m);

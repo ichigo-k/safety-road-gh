@@ -16,7 +16,7 @@ interface ServiceItem {
 /* ── Skeleton: matches service card layout ───────────────────────── */
 function ServiceCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-xl border border-[#e5e5e5] bg-white p-4">
+    <div className="flex flex-col rounded-lg border border-line bg-white p-4">
       <div className="flex items-start justify-between">
         <div className="skeleton h-4 w-16 rounded-full" />
         <div className="skeleton h-4 w-20 rounded" />
@@ -24,7 +24,7 @@ function ServiceCardSkeleton() {
       <div className="mt-3 skeleton h-4 w-3/4" />
       <div className="mt-2 skeleton h-3 w-full" />
       <div className="mt-1 skeleton h-3 w-2/3" />
-      <div className="mt-4 border-t border-[#f0f0f0] pt-3">
+      <div className="mt-4 border-t border-line pt-3">
         <div className="skeleton h-4 w-28" />
       </div>
     </div>
@@ -32,9 +32,9 @@ function ServiceCardSkeleton() {
 }
 
 const CATEGORY_STYLES: Record<string, { label: string; pill: string; icon: string }> = {
-  HOSPITAL: { label: 'Hospital', pill: 'bg-blue-50 text-blue-700 border border-blue-200', icon: '🏥' },
-  POLICE: { label: 'Police', pill: 'bg-[#f0f0f0] text-[#555555] border border-[#e5e5e5]', icon: '🚔' },
-  FIRE_AMBULANCE: { label: 'Fire/Ambulance', pill: 'bg-red-50 text-red-700 border border-red-200', icon: '🚒' },
+  HOSPITAL: { label: 'Hospital', pill: 'bg-info-soft text-info-dark', icon: '🏥' },
+  POLICE: { label: 'Police', pill: 'bg-brand-soft text-brand-dark', icon: '🚔' },
+  FIRE_AMBULANCE: { label: 'Fire and ambulance', pill: 'bg-danger-soft text-danger-dark', icon: '🚒' },
 };
 
 export default function AdminEmergencyServicesPage() {
@@ -100,27 +100,27 @@ export default function AdminEmergencyServicesPage() {
 
   const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div>
-      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#999999]">
+      <label className="mb-1.5 block text-micro font-semibold text-ink-500">
         {label}
       </label>
       {children}
     </div>
   );
 
-  const inputCls = "w-full rounded-lg border border-[#e5e5e5] px-3 py-2.5 text-[13px] text-[#111111] outline-none placeholder:text-[#c4c4c4] focus:border-[#111111] transition bg-white";
+  const inputCls = "w-full rounded-sm border border-line px-3 py-2.5 text-body text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand transition bg-white";
 
   return (
     <div className="space-y-6">
 
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col justify-between gap-4 border-b border-[#e5e5e5] pb-5 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-4 border-b border-line pb-5 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-[#111111]">Response teams</h1>
-          <p className="mt-1 text-sm text-[#999999]">Police, ambulance, fire, and hospitals across Ghana.</p>
+          <h1 className="text-display font-semibold text-ink-900">Response teams</h1>
+          <p className="mt-1 text-body text-ink-500">Police, ambulance, fire, and hospitals across Ghana.</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#111111] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#333333] active:scale-[0.97]"
+          className="inline-flex items-center gap-2 rounded-sm bg-brand px-4 py-2.5 text-body font-semibold text-white transition hover:bg-brand-press active:scale-[0.97]"
         >
           <Plus className="h-3.5 w-3.5" />
           Add service
@@ -131,7 +131,7 @@ export default function AdminEmergencyServicesPage() {
       {loading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-[#e5e5e5] bg-white p-4">
+            <div key={i} className="rounded-lg border border-line bg-white p-4">
               <div className="skeleton h-7 w-8 mb-1" />
               <div className="skeleton h-3 w-20" />
             </div>
@@ -139,16 +139,16 @@ export default function AdminEmergencyServicesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-[#e5e5e5] bg-white px-4 py-3">
-            <p className="text-[26px] font-extrabold tracking-[-0.05em] text-[#111111]">{services.length}</p>
-            <p className="text-[11px] font-semibold text-[#111111]">Total services</p>
+          <div className="rounded-lg border border-line bg-white px-4 py-3">
+            <p className="text-metric font-semibold text-ink-900">{services.length}</p>
+            <p className="text-micro font-semibold text-ink-900">Total services</p>
           </div>
           {Object.entries(CATEGORY_STYLES).map(([cat, meta]) => (
-            <div key={cat} className="rounded-xl border border-[#e5e5e5] bg-white px-4 py-3">
-              <p className="text-[26px] font-extrabold tracking-[-0.05em] text-[#111111]">
+            <div key={cat} className="rounded-lg border border-line bg-white px-4 py-3">
+              <p className="text-metric font-semibold text-ink-900">
                 {byCategory[cat]?.length ?? 0}
               </p>
-              <p className="text-[11px] font-semibold text-[#111111]">{meta.icon} {meta.label}</p>
+              <p className="text-micro font-semibold text-ink-900">{meta.icon} {meta.label}</p>
             </div>
           ))}
         </div>
@@ -160,19 +160,19 @@ export default function AdminEmergencyServicesPage() {
           {Array.from({ length: 6 }).map((_, i) => <ServiceCardSkeleton key={i} />)}
         </div>
       ) : services.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-[#e5e5e5] bg-white py-16 text-center">
-          <Phone className="mb-3 h-8 w-8 text-[#e5e5e5]" />
-          <p className="text-[14px] font-semibold text-[#555555]">No services added yet</p>
+        <div className="flex flex-col items-center justify-center rounded-lg border border-line bg-white py-16 text-center">
+          <Phone className="mb-3 h-8 w-8 text-ink-300" />
+          <p className="text-base font-semibold text-ink-600">No services added yet</p>
         </div>
       ) : (
         Object.entries(byCategory).map(([cat, items]) => {
-          const meta = CATEGORY_STYLES[cat] ?? { label: cat, pill: 'bg-[#f0f0f0] text-[#555555]', icon: '📍' };
+          const meta = CATEGORY_STYLES[cat] ?? { label: cat, pill: 'bg-ink-50 text-ink-600', icon: '📍' };
           return (
             <div key={cat}>
               <div className="mb-3 flex items-center gap-2">
                 <span className="text-base">{meta.icon}</span>
-                <h2 className="text-[13px] font-bold text-[#111111]">{meta.label}</h2>
-                <span className="rounded-full bg-[#f0f0f0] px-2 py-0.5 text-[10px] font-semibold text-[#555555]">
+                <h2 className="text-body font-semibold text-ink-900">{meta.label}</h2>
+                <span className="rounded-full bg-ink-50 px-2 py-0.5 text-micro font-semibold text-ink-600">
                   {items.length}
                 </span>
               </div>
@@ -180,29 +180,29 @@ export default function AdminEmergencyServicesPage() {
                 {items.map((service) => (
                   <div
                     key={service.id}
-                    className="flex flex-col rounded-xl border border-[#e5e5e5] bg-white p-4 transition hover:border-[#d1d1d1] hover:shadow-[0_2px_10px_rgba(0,0,0,0.05)]"
+                    className="flex flex-col rounded-lg border border-line bg-white p-4 transition hover:border-line-strong hover:shadow-card"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${meta.pill}`}>
+                      <span className={`inline-flex rounded-xs px-2 py-1 text-micro font-semibold ${meta.pill}`}>
                         {meta.label}
                       </span>
-                      <span className="text-[10px] text-[#999999]">{service.region}</span>
+                      <span className="text-micro text-ink-500">{service.region}</span>
                     </div>
 
-                    <h3 className="mt-2.5 text-[13px] font-bold text-[#111111] leading-snug">{service.name}</h3>
+                    <h3 className="mt-2.5 text-body font-semibold text-ink-900 leading-snug">{service.name}</h3>
 
-                    <div className="mt-1.5 flex items-start gap-1.5 text-[11px] text-[#999999]">
+                    <div className="mt-1.5 flex items-start gap-1.5 text-micro text-ink-500">
                       <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
                       <span>{service.address}</span>
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between border-t border-[#f0f0f0] pt-3">
-                      <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[#111111]">
-                        <Phone className="h-3.5 w-3.5 text-[#999999]" />
+                    <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+                      <div className="flex items-center gap-1.5 text-caption font-semibold text-ink-900">
+                        <Phone className="h-3.5 w-3.5 text-ink-500" />
                         {service.phone}
                       </div>
                       {service.altPhone && (
-                        <span className="text-[10px] text-[#999999]">Alt: {service.altPhone}</span>
+                        <span className="text-micro text-ink-500">Alt: {service.altPhone}</span>
                       )}
                     </div>
                   </div>
@@ -216,14 +216,14 @@ export default function AdminEmergencyServicesPage() {
       {/* ── Add modal ──────────────────────────────────────────────── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_60px_rgba(0,0,0,0.14)]">
+          <div className="w-full max-w-md overflow-hidden rounded-xl border border-line bg-white shadow-overlay">
 
-            <div className="flex items-center justify-between border-b border-[#e5e5e5] px-5 py-4">
-              <h2 className="text-[14px] font-extrabold tracking-[-0.02em] text-[#111111]">Add emergency contact</h2>
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+              <h2 className="text-base font-semibold text-ink-900">Add emergency contact</h2>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="rounded-lg p-1.5 text-[#999999] hover:bg-[#f7f7f7] hover:text-[#111111]"
+                className="rounded-sm p-1.5 text-ink-500 hover:bg-ink-50 hover:text-ink-900"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -276,11 +276,11 @@ export default function AdminEmergencyServicesPage() {
 
               <div className="flex justify-end gap-3 pt-1">
                 <button type="button" onClick={() => setShowModal(false)}
-                  className="rounded-lg border border-[#e5e5e5] px-4 py-2 text-[13px] font-medium text-[#555555] hover:bg-[#f7f7f7]">
+                  className="rounded-sm border border-line px-4 py-2 text-body font-medium text-ink-600 hover:bg-ink-50">
                   Cancel
                 </button>
                 <button type="submit" disabled={submitting}
-                  className="rounded-lg bg-[#111111] px-5 py-2 text-[13px] font-semibold text-white hover:bg-[#333333] disabled:opacity-50 active:scale-[0.97] transition">
+                  className="rounded-sm bg-brand px-5 py-2 text-body font-semibold text-white hover:bg-brand-press disabled:opacity-50 active:scale-[0.97] transition">
                   {submitting ? 'Saving…' : 'Save contact'}
                 </button>
               </div>

@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  SafeAreaView,
-  StatusBar,
-  TouchableOpacity,
-  TextInput,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { apiFetch } from '../services/api';
 import Icon from '../components/Icon';
-import { colors, typography, spacing, radius, shadows } from '../theme';
+import {
+  EmptyState,
+  FilterChips,
+  Screen,
+  SearchField,
+  SkeletonCard,
+  SkeletonGroup,
+  Surface,
+  Tag,
+} from '../components/ui';
+import { AREA_RADIUS_KM, areaQuery, useArea } from '../services/area';
+import { colors, radius, spacing, typography } from '../theme';
 
 interface NotificationsScreenProps {
   onSelectAlert?: (alert: any) => void;
@@ -21,7 +21,15 @@ interface NotificationsScreenProps {
 
 type AlertFilter = 'ALL' | 'CRITICAL' | 'ADVISORY' | 'WEATHER';
 
+const isCriticalAlert = (a: any) => a.severity === 'HIGH' || a.severity === 'CRITICAL';
+
+const isWeatherAlert = (a: any) => {
+  const text = `${a.title || ''} ${a.description || ''}`.toLowerCase();
+  return text.includes('flood') || text.includes('rain');
+};
+
 export default function NotificationsScreen({ onSelectAlert }: NotificationsScreenProps) {
+  const { area } = useArea();
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,7 +38,10 @@ export default function NotificationsScreen({ onSelectAlert }: NotificationsScre
 
   const fetchAlerts = async () => {
     try {
-      const res = await apiFetch('/alerts');
+      // Scoped to the selected area: a broadcast about the Weija Highway is
+      // not news to someone in Tamale, and burying the relevant one under
+      // national noise is how people stop reading alerts at all.
+      const res = await apiFetch(`/alerts?${areaQuery(area)}`);
       if (res.alerts) setAlerts(res.alerts);
     } catch (e) {
       console.error(e);
@@ -41,7 +52,8 @@ export default function NotificationsScreen({ onSelectAlert }: NotificationsScre
 
   useEffect(() => {
     fetchAlerts();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [area.latitude, area.longitude]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -49,31 +61,38 @@ export default function NotificationsScreen({ onSelectAlert }: NotificationsScre
     setRefreshing(false);
   };
 
+  const criticalCount = useMemo(() => alerts.filter(isCriticalAlert).length, [alerts]);
+
   const filteredAlerts = useMemo(() => {
     return alerts.filter((alert) => {
-      const isCritical = alert.severity === 'HIGH' || alert.severity === 'CRITICAL';
-      if (filter === 'CRITICAL' && !isCritical) return false;
-      if (filter === 'ADVISORY' && isCritical) return false;
-      if (filter === 'WEATHER' && !((alert.title || '') + (alert.description || '')).toLowerCase().includes('flood') && !((alert.title || '') + (alert.description || '')).toLowerCase().includes('rain')) {
-        return false;
-      }
+      if (filter === 'CRITICAL' && !isCriticalAlert(alert)) return false;
+      if (filter === 'ADVISORY' && isCriticalAlert(alert)) return false;
+      if (filter === 'WEATHER' && !isWeatherAlert(alert)) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const titleMatch = (alert.title || '').toLowerCase().includes(q);
-        const descMatch = (alert.description || '').toLowerCase().includes(q);
-        const locMatch = (alert.locationName || '').toLowerCase().includes(q);
-        return titleMatch || descMatch || locMatch;
+        return (
+          (alert.title || '').toLowerCase().includes(q) ||
+          (alert.description || '').toLowerCase().includes(q) ||
+          (alert.locationName || '').toLowerCase().includes(q)
+        );
       }
       return true;
     });
   }, [alerts, filter, searchQuery]);
 
+  const filterItems: { id: AlertFilter; label: string; count?: number }[] = [
+    { id: 'ALL', label: 'All', count: alerts.length },
+    { id: 'CRITICAL', label: 'Critical', count: criticalCount },
+    { id: 'ADVISORY', label: 'Advisories' },
+    { id: 'WEATHER', label: 'Weather' },
+  ];
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <Screen>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={s.scroll}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -81,364 +100,188 @@ export default function NotificationsScreen({ onSelectAlert }: NotificationsScre
             tintColor={colors.primary}
           />
         }
-        showsVerticalScrollIndicator={false}
       >
-        {/* ── App Bar / Header ─────────────────────────────────────────── */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>Road Alerts & Advisories</Text>
-            <Text style={styles.headerSubtitle}>
-              Live Ghana MTTD traffic bulletins & safety warnings
-            </Text>
-          </View>
-        </View>
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <Text style={s.pageTitle}>Road alerts</Text>
+        <Text style={s.pageSub}>
+          MTTD bulletins within {AREA_RADIUS_KM} km of {area.name}
+        </Text>
 
-        {/* ── Search Bar ────────────────────────────────────────────────── */}
-        <View style={styles.searchBar}>
-          <Icon name="search" size={16} color={colors.textSubtle} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by highway, corridor, or town..."
-            placeholderTextColor={colors.textDisabled}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            clearButtonMode="while-editing"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Text style={styles.clearSearchText}>Clear</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* ── Filter Pills ──────────────────────────────────────────────── */}
-        <View style={styles.filterRow}>
-          {(
-            [
-              { id: 'ALL', label: `All (${alerts.length})` },
-              { id: 'CRITICAL', label: 'Critical / Urgent' },
-              { id: 'ADVISORY', label: 'Advisories' },
-              { id: 'WEATHER', label: 'Weather & Floods' },
-            ] as { id: AlertFilter; label: string }[]
-          ).map((item) => {
-            const isActive = filter === item.id;
-            return (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
-                onPress={() => setFilter(item.id)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* ── Content List ──────────────────────────────────────────────── */}
-        {loading ? (
-          <View style={styles.centerWrap}>
-            <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={styles.loadingText}>Syncing emergency broadcasts...</Text>
-          </View>
-        ) : filteredAlerts.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIconWrap}>
-              <Icon name="check" size={24} color={colors.primary} />
+        {criticalCount > 0 ? (
+          <View style={s.criticalBanner}>
+            <View style={s.criticalIcon}>
+              <Icon name="alert-triangle" size={17} color={colors.danger} />
             </View>
-            <Text style={styles.emptyTitle}>
-              {searchQuery ? 'No Matching Broadcasts' : 'All Routes Clear'}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              {searchQuery
-                ? 'Try a different road name or clear the search query.'
-                : 'No active road warnings or traffic hazard broadcasts at this time.'}
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.criticalTitle}>
+                {criticalCount} critical {criticalCount === 1 ? 'alert' : 'alerts'} active
+              </Text>
+              <Text style={s.criticalCopy}>Avoid affected corridors where possible.</Text>
+            </View>
           </View>
+        ) : null}
+
+        {/* ── Search + filters ───────────────────────────────────────────── */}
+        <SearchField
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search by highway, corridor or town"
+          style={{ marginBottom: spacing.md }}
+        />
+
+        <FilterChips items={filterItems} value={filter} onChange={setFilter} style={s.chips} />
+
+        {/* ── List ───────────────────────────────────────────────────────── */}
+        {loading ? (
+          <SkeletonGroup>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </SkeletonGroup>
+        ) : filteredAlerts.length === 0 ? (
+          <Surface>
+            <EmptyState
+              icon="check-badge"
+              title={searchQuery ? 'No matching broadcasts' : 'All routes clear'}
+              description={
+                searchQuery
+                  ? 'Try a different road name, or clear the search.'
+                  : 'No active road warnings or hazard broadcasts at this time.'
+              }
+            />
+          </Surface>
         ) : (
-          filteredAlerts.map((alert) => {
-            const isHigh = alert.severity === 'HIGH' || alert.severity === 'CRITICAL';
-            const severityColor = isHigh ? colors.danger : colors.warning;
-            const severityBg = isHigh ? colors.dangerLight : colors.warningLight;
-
-            return (
-              <TouchableOpacity
+          <Surface padded={false}>
+            {filteredAlerts.map((alert, i) => (
+              <AlertRow
                 key={alert.id}
-                style={styles.card}
-                activeOpacity={0.82}
+                alert={alert}
+                last={i === filteredAlerts.length - 1}
                 onPress={() => onSelectAlert?.(alert)}
-              >
-                <View style={styles.cardHeader}>
-                  <View style={[styles.severityBadge, { backgroundColor: severityBg }]}>
-                    <View style={[styles.severityDot, { backgroundColor: severityColor }]} />
-                    <Text style={[styles.severityText, { color: severityColor }]}>
-                      {alert.severity || 'BROADCAST'}
-                    </Text>
-                  </View>
-
-                  <Text style={styles.timeText}>
-                    {new Date(alert.createdAt || Date.now()).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Text>
-                </View>
-
-                {/* Title */}
-                <Text style={styles.title}>
-                  {alert.title && alert.title.trim() ? alert.title : 'Official Road Broadcast'}
-                </Text>
-
-                {/* Description */}
-                <Text numberOfLines={2} style={styles.desc}>
-                  {alert.description && alert.description.trim()
-                    ? alert.description
-                    : 'Cautionary traffic advisory issued for Ghana road network.'}
-                </Text>
-
-                {/* Landmark Location if present */}
-                {alert.locationName ? (
-                  <View style={styles.locationRow}>
-                    <Icon name="location" size={12} color={colors.textSubtle} />
-                    <Text numberOfLines={1} style={styles.locationText}>
-                      {alert.locationName}
-                    </Text>
-                  </View>
-                ) : null}
-
-                {/* Footer */}
-                <View style={styles.cardFooter}>
-                  <View style={styles.sourceRow}>
-                    <Icon name="shield" size={12} color={colors.textSubtle} />
-                    <Text style={styles.sourceText}>Ghana MTTD Dispatch</Text>
-                  </View>
-                  <View style={styles.viewLink}>
-                    <Text style={styles.viewLinkText}>View Advisory</Text>
-                    <Icon name="chevron" size={12} color={colors.primary} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })
+              />
+            ))}
+          </Surface>
         )}
 
-        <View style={{ height: spacing.xxl }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.lg,
+/* ────────────────────────────────────────────────────────────────────────── */
+
+// One grouped list, not a stack of floating cards. Every alert came from the
+// same dispatch and offers the same action, so repeating a source line and a
+// "View advisory" link on each one was pure noise — the source is stated once
+// in the header and the whole row is the target.
+function AlertRow({
+  alert,
+  last,
+  onPress,
+}: {
+  alert: any;
+  last?: boolean;
+  onPress: () => void;
+}) {
+  const critical = isCriticalAlert(alert);
+  const when = new Date(alert.createdAt || Date.now());
+  const sameDay = when.toDateString() === new Date().toDateString();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${critical ? 'Urgent' : 'Advisory'}: ${alert.title || 'Road broadcast'}`}
+      style={({ pressed }) => [
+        s.row,
+        last && { borderBottomWidth: 0 },
+        pressed && { backgroundColor: colors.surfaceMuted },
+      ]}
+    >
+      <View style={s.rowTop}>
+        <Tag label={critical ? 'Urgent' : 'Advisory'} tone={critical ? 'danger' : 'warning'} />
+        <Text style={s.stamp}>
+          {sameDay
+            ? when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : when.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+        </Text>
+      </View>
+
+      <Text style={s.title} numberOfLines={2}>
+        {alert.title?.trim() ? alert.title : 'Road broadcast'}
+      </Text>
+
+      {alert.description?.trim() ? (
+        <Text style={s.desc} numberOfLines={2}>
+          {alert.description}
+        </Text>
+      ) : null}
+
+      {alert.locationName ? (
+        <View style={s.locRow}>
+          <Icon name="location" size={14} color={colors.textDisabled} />
+          <Text style={s.locText} numberOfLines={1}>
+            {alert.locationName}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+
+const s = StyleSheet.create({
+  scroll: {
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
   },
-
-  // Header
-  header: {
-    marginBottom: spacing.md,
-  },
-  headerTitle: {
-    ...typography.headline,
-    fontSize: 20,
-    color: colors.text,
-  },
-  headerSubtitle: {
-    ...typography.caption,
+  pageTitle: { ...typography.display },
+  pageSub: {
+    ...typography.callout,
     color: colors.textSubtle,
-    marginTop: 1,
+    marginTop: 2,
+    marginBottom: spacing.xl,
   },
 
-  // Search Bar
-  searchBar: {
+  criticalBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.surface,
+    gap: spacing.md,
+    padding: spacing.lg,
     borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.sm,
+    backgroundColor: colors.dangerLight,
+    marginBottom: spacing.lg,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: colors.text,
-    padding: 0,
-  },
-  clearSearchText: {
-    fontSize: 11,
-    color: colors.textSubtle,
-    fontWeight: '700',
-  },
-
-  // Filter Pills
-  filterRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: spacing.md,
-  },
-  filterChip: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  filterChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSubtle,
-  },
-  filterChipTextActive: {
-    color: colors.primaryDark,
-    fontWeight: '700',
-  },
-
-  // Cards
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  severityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: radius.xs,
-  },
-  severityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  severityText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  timeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textDisabled,
-  },
-  title: {
-    ...typography.title,
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 3,
-  },
-  desc: {
-    ...typography.body,
-    fontSize: 12,
-    color: colors.textMuted,
-    lineHeight: 17,
-    marginBottom: spacing.sm,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: spacing.sm,
-  },
-  locationText: {
-    fontSize: 11,
-    color: colors.textSubtle,
-    fontWeight: '500',
-    flex: 1,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
-  sourceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  sourceText: {
-    fontSize: 11,
-    color: colors.textSubtle,
-  },
-  viewLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  viewLinkText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-
-  // Loading & Empty
-  centerWrap: {
-    padding: spacing.xxxl,
-    alignItems: 'center',
-  },
-  loadingText: {
-    ...typography.body,
-    color: colors.textSubtle,
-    marginTop: spacing.sm,
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.xxl,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 3,
-    ...shadows.card,
-  },
-  emptyIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primaryLight,
+  criticalIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(188,59,47,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  criticalTitle: { fontSize: 15, fontWeight: '600', color: colors.dangerDark },
+  criticalCopy: { fontSize: 13, color: colors.dangerDark, opacity: 0.75, marginTop: 1 },
+
+  chips: { marginBottom: spacing.lg, marginHorizontal: -spacing.xl, paddingLeft: spacing.xl },
+
+  row: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  rowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
-  emptyTitle: {
-    ...typography.title,
-    fontSize: 15,
-    color: colors.text,
-  },
-  emptySubtitle: {
-    ...typography.caption,
-    color: colors.textSubtle,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
+  stamp: { ...typography.micro, color: colors.textDisabled, fontVariant: ['tabular-nums'] },
+  title: { fontSize: 15.5, fontWeight: '500', color: colors.text, letterSpacing: -0.2 },
+  desc: { ...typography.micro, marginTop: 3, lineHeight: 17 },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  locText: { ...typography.micro, flex: 1 },
 });

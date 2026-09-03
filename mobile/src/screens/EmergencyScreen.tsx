@@ -1,27 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-  StatusBar,
-  Linking,
-  ActivityIndicator,
-} from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { apiFetch } from '../services/api';
 import Icon from '../components/Icon';
-import { colors, typography, spacing, radius, shadows } from '../theme';
+import {
+  EmptyState,
+  FilterChips,
+  Screen,
+  ScreenHeader,
+  SectionLabel,
+  SkeletonCard,
+  SkeletonGroup,
+  Surface,
+} from '../components/ui';
+import { colors, radius, spacing, typography } from '../theme';
 
 interface EmergencyScreenProps {
   onBack?: () => void;
 }
 
+type Category = 'ALL' | 'HOSPITAL' | 'POLICE' | 'FIRE_AMBULANCE';
+
+// Ghana national emergency lines. Ordered by how often a road user needs them.
+const HOTLINES = [
+  { key: 'ambulance', icon: 'ambulance', label: 'Ambulance', dial: '193', alt: '112' },
+  { key: 'police', icon: 'police', label: 'Police MTTD', dial: '18555', alt: '191' },
+  { key: 'fire', icon: 'fire', label: 'Fire service', dial: '192', alt: '112' },
+];
+
 export default function EmergencyScreen({ onBack }: EmergencyScreenProps) {
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [category, setCategory] = useState<Category>('ALL');
 
   useEffect(() => {
     fetchEmergencyServices();
@@ -38,377 +47,202 @@ export default function EmergencyScreen({ onBack }: EmergencyScreenProps) {
     }
   };
 
-  const makeCall = (phone: string) => {
-    Linking.openURL(`tel:${phone}`);
-  };
+  const call = (phone: string) => Linking.openURL(`tel:${phone}`);
 
-  const filteredServices = services.filter(
-    (s) => selectedCategory === 'ALL' || s.category === selectedCategory
-  );
+  const filtered = services.filter((x) => category === 'ALL' || x.category === category);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* ── App Bar / Header ─────────────────────────────────────────── */}
-        <View style={styles.header}>
-          {onBack && (
-            <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-              <Icon name="back" size={20} color={colors.textPrimary} />
-            </TouchableOpacity>
-          )}
-          <View style={styles.headerCopy}>
-            <Text style={styles.headerTitle}>Emergency Services</Text>
-            <Text style={styles.headerSubtitle}>
-              National Ghana hotlines & rapid dispatch direct dial
-            </Text>
-          </View>
-        </View>
+    <Screen>
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        <ScreenHeader
+          title="Emergency"
+          subtitle="National lines answer 24 hours and are free to call"
+          onBack={onBack}
+        />
 
-        {/* ── Toll-Free Priority Hotlines Hero Card ────────────────────── */}
-        <View style={styles.hotlineHeroCard}>
-          <Text style={styles.hotlineHeader}>NATIONAL 24/7 TOLL-FREE NUMBERS</Text>
-          <View style={styles.hotlineGrid}>
-            <TouchableOpacity
-              style={styles.hotlineChip}
-              onPress={() => makeCall('193')}
-              activeOpacity={0.8}
+        {/* ── National lines ───────────────────────────────────────────────
+            Three full-width rows rather than three small tiles. Under stress
+            the target should be as large as the screen allows, and the number
+            has to be readable without focusing. */}
+        <Surface padded={false}>
+          {HOTLINES.map((h, i) => (
+            <Pressable
+              key={h.key}
+              onPress={() => call(h.dial)}
+              accessibilityRole="button"
+              accessibilityLabel={`Call ${h.label} on ${h.dial}`}
+              style={({ pressed }) => [
+                s.hotline,
+                i === HOTLINES.length - 1 && { borderBottomWidth: 0 },
+                pressed && { backgroundColor: colors.surfaceMuted },
+              ]}
             >
-              <View style={[styles.hotlineIconWrap, { backgroundColor: colors.googleRedLight }]}>
-                <Icon name="ambulance" size={20} color={colors.googleRed} />
+              <View style={s.hotlineIcon}>
+                <Icon name={h.icon} size={22} color={colors.danger} />
               </View>
-              <Text style={styles.hotlineTitle}>Ambulance</Text>
-              <Text style={[styles.hotlineNum, { color: colors.googleRed }]}>193 / 112</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.hotlineChip}
-              onPress={() => makeCall('18555')}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.hotlineIconWrap, { backgroundColor: colors.googleBlueLight }]}>
-                <Icon name="police" size={20} color={colors.googleBlue} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.hotlineLabel}>{h.label}</Text>
+                <Text style={s.hotlineAlt}>or {h.alt}</Text>
               </View>
-              <Text style={styles.hotlineTitle}>Police MTTD</Text>
-              <Text style={[styles.hotlineNum, { color: colors.googleBlue }]}>18555 / 191</Text>
-            </TouchableOpacity>
+              <Text style={s.hotlineDial}>{h.dial}</Text>
+              <Icon name="phone-filled" size={19} color={colors.danger} />
+            </Pressable>
+          ))}
+        </Surface>
 
-            <TouchableOpacity
-              style={styles.hotlineChip}
-              onPress={() => makeCall('192')}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.hotlineIconWrap, { backgroundColor: colors.hazardLight }]}>
-                <Icon name="fire" size={20} color={colors.hazard} />
-              </View>
-              <Text style={styles.hotlineTitle}>Fire Service</Text>
-              <Text style={[styles.hotlineNum, { color: colors.hazard }]}>192 / 112</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {/* ── Directory ──────────────────────────────────────────────────── */}
+        <SectionLabel style={s.section}>Stations and hospitals</SectionLabel>
 
-        {/* ── Filter Categories ────────────────────────────────────────── */}
-        <View style={styles.filterRow}>
-          {['ALL', 'HOSPITAL', 'POLICE', 'FIRE_AMBULANCE'].map((cat) => {
-            const isActive = selectedCategory === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.filterBtn, isActive && styles.filterBtnActive]}
-                onPress={() => setSelectedCategory(cat)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                  {cat === 'ALL'
-                    ? 'All Units'
-                    : cat === 'FIRE_AMBULANCE'
-                    ? 'Fire & Amb'
-                    : cat.charAt(0) + cat.slice(1).toLowerCase()}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <FilterChips<Category>
+          items={[
+            { id: 'ALL', label: 'All' },
+            { id: 'HOSPITAL', label: 'Hospitals' },
+            { id: 'POLICE', label: 'Police' },
+            { id: 'FIRE_AMBULANCE', label: 'Fire and ambulance' },
+          ]}
+          value={category}
+          onChange={setCategory}
+          style={s.chips}
+        />
 
-        {/* ── Directory List ──────────────────────────────────────────── */}
         {loading ? (
-          <View style={styles.centerWrap}>
-            <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={styles.loadingText}>Fetching emergency stations...</Text>
-          </View>
-        ) : filteredServices.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No emergency contacts found in this category.</Text>
-          </View>
+          <SkeletonGroup>
+            <SkeletonCard />
+            <SkeletonCard />
+          </SkeletonGroup>
+        ) : filtered.length === 0 ? (
+          <Surface>
+            <EmptyState
+              icon="hospital"
+              title="No stations listed"
+              description="Nothing in this category yet. Try another filter."
+            />
+          </Surface>
         ) : (
-          filteredServices.map((service) => (
-            <View key={service.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>{service.category}</Text>
-                </View>
-                <Text style={styles.regionText}>{service.region || 'Greater Accra'}</Text>
-              </View>
+          <View style={{ gap: spacing.sm }}>
+            {filtered.map((service) => (
+              <Surface key={service.id}>
+                <Text style={s.serviceName}>{service.name}</Text>
+                <Text style={s.serviceMeta}>
+                  {(service.category || 'Service').toString().replace('_', ' and ').toLowerCase()} ·{' '}
+                  {service.region || 'Greater Accra'}
+                </Text>
 
-              <Text style={styles.serviceName}>{service.name}</Text>
-              <View style={styles.addressRow}>
-                <Icon name="location" size={14} color={colors.textTertiary} />
-                <Text style={styles.addressText}>{service.address}</Text>
-              </View>
+                {service.address ? (
+                  <View style={s.addressRow}>
+                    <Icon name="location" size={15} color={colors.textDisabled} />
+                    <Text style={s.addressText}>{service.address}</Text>
+                  </View>
+                ) : null}
 
-              <View style={styles.callRow}>
-                <TouchableOpacity
-                  style={styles.callButton}
-                  onPress={() => makeCall(service.phone)}
-                  activeOpacity={0.85}
-                >
-                  <Icon name="phone" size={15} color="#ffffff" />
-                  <Text style={styles.callButtonText}>Call {service.phone}</Text>
-                </TouchableOpacity>
-
-                {service.altPhone && (
-                  <TouchableOpacity
-                    style={styles.altCallButton}
-                    onPress={() => makeCall(service.altPhone)}
-                    activeOpacity={0.85}
+                <View style={s.callRow}>
+                  <Pressable
+                    onPress={() => call(service.phone)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Call ${service.name} on ${service.phone}`}
+                    style={({ pressed }) => [s.callBtn, pressed && { opacity: 0.85 }]}
                   >
-                    <Text style={styles.altCallButtonText}>Alt: {service.altPhone}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          ))
+                    <Icon name="phone-filled" size={17} color="#FFFFFF" />
+                    <Text style={s.callBtnText}>{service.phone}</Text>
+                  </Pressable>
+
+                  {service.altPhone ? (
+                    <Pressable
+                      onPress={() => call(service.altPhone)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Call alternate number ${service.altPhone}`}
+                      style={({ pressed }) => [s.altBtn, pressed && { opacity: 0.7 }]}
+                    >
+                      <Text style={s.altBtnText}>{service.altPhone}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </Surface>
+            ))}
+          </View>
         )}
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
-  },
+const s = StyleSheet.create({
+  scroll: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
 
-  // Header
-  header: {
+  hotline: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    marginBottom: spacing.lg,
+    minHeight: 68,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
+  hotlineIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.sm,
+    backgroundColor: colors.dangerLight,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  headerCopy: {
-    flex: 1,
-  },
-  headerTitle: {
-    ...typography.headline,
-    color: colors.textPrimary,
-  },
-  headerSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-
-  // Hotline Hero Card
-  hotlineHeroCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.lg,
-    ...shadows.card,
-  },
-  hotlineHeader: {
-    ...typography.label,
-    color: colors.textTertiary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  hotlineGrid: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  hotlineChip: {
-    flex: 1,
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  hotlineIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  hotlineTitle: {
-    ...typography.caption,
+  hotlineLabel: { fontSize: 16, fontWeight: '600', color: colors.text, letterSpacing: -0.2 },
+  hotlineAlt: { ...typography.micro, marginTop: 1 },
+  hotlineDial: {
+    fontSize: 19,
     fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  hotlineNum: {
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 2,
+    color: colors.danger,
+    letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'],
   },
 
-  // Filter Row
-  filterRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: spacing.lg,
-  },
-  filterBtn: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterBtnActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  filterText: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  filterTextActive: {
-    color: colors.primaryDark,
-    fontWeight: '700',
-  },
+  section: { marginTop: spacing.xxl },
+  chips: { marginBottom: spacing.lg, marginHorizontal: -spacing.xl, paddingLeft: spacing.xl },
 
-  // Cards
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  categoryBadge: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.xs,
-  },
-  categoryBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.primaryDark,
-    textTransform: 'uppercase',
-  },
-  regionText: {
-    ...typography.caption,
-    color: colors.textTertiary,
-  },
-  serviceName: {
-    ...typography.title,
-    fontSize: 15,
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
+  serviceName: { ...typography.title },
+  serviceMeta: { ...typography.micro, marginTop: 2, textTransform: 'capitalize' },
   addressRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: spacing.md,
-  },
-  addressText: {
-    ...typography.body,
-    fontSize: 13,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  callRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  callButton: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 6,
+    marginTop: spacing.md,
   },
-  callButtonText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  altCallButton: {
-    backgroundColor: colors.surfaceVariant,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: radius.md,
+  addressText: { flex: 1, ...typography.callout, lineHeight: 19 },
+
+  callRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  callBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 8,
+    height: 46,
+    borderRadius: radius.sm,
+    backgroundColor: colors.danger,
   },
-  altCallButtonText: {
-    color: colors.textSecondary,
+  callBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15.5,
     fontWeight: '600',
-    fontSize: 11,
+    letterSpacing: -0.2,
+    fontVariant: ['tabular-nums'],
   },
-
-  // Loading & Empty
-  centerWrap: {
-    padding: spacing.xxxl,
-    alignItems: 'center',
-  },
-  loadingText: {
-    ...typography.body,
-    color: colors.textTertiary,
-    marginTop: spacing.sm,
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.xl,
-    alignItems: 'center',
+  altBtn: {
+    height: 46,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  emptyText: {
-    ...typography.body,
-    color: colors.textSecondary,
+  altBtnText: {
+    color: colors.textMuted,
+    fontSize: 14.5,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
 });

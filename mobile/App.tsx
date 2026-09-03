@@ -1,8 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, StatusBar, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
 import { getAuthToken, getUserData } from './src/services/api';
-import Icon from './src/components/Icon';
-import { colors, typography, radius } from './src/theme';
+import TabBar, { ReportFab, TabItem } from './src/components/TabBar';
+import { colors } from './src/theme';
+import { AreaProvider } from './src/services/area';
+
+// Side-effect import: registers the background geofence task.
+//
+// TaskManager.defineTask must run while the JS bundle is first evaluated. When
+// the OS relaunches a killed app to hand it a location update, no screen has
+// mounted yet — so importing this from SettingsScreen alone would mean the
+// task is undefined at exactly the moment it is needed, and the fix is
+// silently dropped. It has to be reachable from the entry point.
+import './src/services/backgroundGeofence';
 
 import SplashScreen from './src/screens/SplashScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -19,6 +29,8 @@ import ReportSubmittedScreen from './src/screens/ReportSubmittedScreen';
 import MyReportsScreen from './src/screens/MyReportsScreen';
 import ReportDetailsScreen from './src/screens/ReportDetailsScreen';
 import MapScreen from './src/screens/MapScreen';
+import AreaPickerScreen from './src/screens/AreaPickerScreen';
+import RoutePreviewScreen from './src/screens/RoutePreviewScreen';
 import EmergencyScreen from './src/screens/EmergencyScreen';
 import AlertDetailsScreen from './src/screens/AlertDetailsScreen';
 import SafetyTipsScreen from './src/screens/SafetyTipsScreen';
@@ -49,6 +61,8 @@ export type ScreenState =
   | 'MY_REPORTS'
   | 'REPORT_DETAILS'
   | 'MAP'
+  | 'ROUTE_PREVIEW'
+  | 'AREA_PICKER'
   | 'EMERGENCY'
   | 'ROAD_ALERTS'
   | 'ALERT_DETAILS'
@@ -72,6 +86,7 @@ export default function App() {
   const [selectedAlert, setSelectedAlert] = useState<any>(null);
   const [selectedTip, setSelectedTip] = useState<any>(null);
   const [reportType, setReportType] = useState<'ACCIDENT' | 'HAZARD'>('ACCIDENT');
+  const hasSession = useRef(false);
 
   useEffect(() => {
     checkAuth();
@@ -82,14 +97,18 @@ export default function App() {
       const token = await getAuthToken();
       const userData = await getUserData();
       if (userData) setUser(userData);
+      hasSession.current = !!token;
       if (token) {
         setScreen('HOME');
       }
     } catch (e) {}
   };
 
+  // The splash timer resolves after checkAuth, so without this guard it would
+  // overwrite the authenticated redirect and send a signed-in user back
+  // through onboarding.
   const handleFinishSplash = () => {
-    setScreen('ONBOARDING');
+    setScreen(hasSession.current ? 'HOME' : 'ONBOARDING');
   };
 
   const handleFinishOnboarding = () => {
@@ -106,23 +125,41 @@ export default function App() {
     setScreen('AUTH');
   };
 
-  const isHomeActive = screen === 'HOME';
-  const isMapActive = screen === 'MAP';
-  const isReportsActive = screen === 'MY_REPORTS' || screen === 'REPORT_DETAILS';
-  const isAlertsActive = screen === 'ROAD_ALERTS' || screen === 'NOTIFICATIONS' || screen === 'ALERT_DETAILS';
-  const isProfileActive =
-    screen === 'PROFILE' ||
-    screen === 'EDIT_PROFILE' ||
-    screen === 'CHANGE_PASSWORD' ||
-    screen === 'SETTINGS' ||
-    screen === 'HELP_SUPPORT' ||
-    screen === 'ABOUT' ||
-    screen === 'PRIVACY_POLICY' ||
-    screen === 'TERMS_CONDITIONS';
+  // Which tab lights up for the current screen — detail screens keep their
+  // parent tab active.
+  const TAB_OWNERS: Record<string, ScreenState[]> = {
+    HOME: ['HOME', 'AREA_PICKER'],
+    MAP: ['MAP', 'ROUTE_PREVIEW'],
+    MY_REPORTS: ['MY_REPORTS', 'REPORT_DETAILS'],
+    ROAD_ALERTS: ['ROAD_ALERTS', 'NOTIFICATIONS', 'ALERT_DETAILS'],
+    PROFILE: [
+      'PROFILE',
+      'EDIT_PROFILE',
+      'CHANGE_PASSWORD',
+      'SETTINGS',
+      'HELP_SUPPORT',
+      'ABOUT',
+      'PRIVACY_POLICY',
+      'TERMS_CONDITIONS',
+    ],
+  };
+
+  const activeTabKey =
+    Object.keys(TAB_OWNERS).find((key) => TAB_OWNERS[key].includes(screen)) ?? '';
+
+  const TAB_ITEMS: TabItem[] = [
+    { key: 'HOME', label: 'Home', icon: 'home' },
+    { key: 'MAP', label: 'Live Map', icon: 'map' },
+    { key: 'MY_REPORTS', label: 'Reports', icon: 'reports' },
+    { key: 'ROAD_ALERTS', label: 'Alerts', icon: 'alerts' },
+    { key: 'PROFILE', label: 'Profile', icon: 'profile' },
+  ];
 
   const TAB_SCREENS: ScreenState[] = [
     'HOME',
+    'AREA_PICKER',
     'MAP',
+    'ROUTE_PREVIEW',
     'MY_REPORTS',
     'ROAD_ALERTS',
     'PROFILE',
@@ -133,6 +170,7 @@ export default function App() {
   ];
 
   return (
+    <AreaProvider>
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.content}>
@@ -140,7 +178,12 @@ export default function App() {
 
         {screen === 'ONBOARDING' && <OnboardingScreen onFinish={handleFinishOnboarding} />}
 
-        {screen === 'AUTH' && <AuthScreen onLoginSuccess={handleLoginSuccess} />}
+        {screen === 'AUTH' && (
+          <AuthScreen
+            onLoginSuccess={handleLoginSuccess}
+            onForgotPassword={() => setScreen('FORGOT_PASSWORD')}
+          />
+        )}
 
         {screen === 'FORGOT_PASSWORD' && (
           <ForgotPasswordScreen
@@ -175,6 +218,8 @@ export default function App() {
             }}
             onNavigateToEmergency={() => setScreen('EMERGENCY')}
             onNavigateToMap={() => setScreen('MAP')}
+            onNavigateToRoute={() => setScreen('ROUTE_PREVIEW')}
+            onChangeArea={() => setScreen('AREA_PICKER')}
             onNavigateToAlerts={() => setScreen('ROAD_ALERTS')}
             onNavigateToTips={() => setScreen('SAFETY_TIPS')}
           />
@@ -231,6 +276,12 @@ export default function App() {
             }}
           />
         )}
+
+        {screen === 'ROUTE_PREVIEW' && (
+          <RoutePreviewScreen onBack={() => setScreen('HOME')} />
+        )}
+
+        {screen === 'AREA_PICKER' && <AreaPickerScreen onDone={() => setScreen('HOME')} />}
 
         {screen === 'EMERGENCY' && <EmergencyScreen onBack={() => setScreen('HOME')} />}
 
@@ -301,93 +352,28 @@ export default function App() {
         {screen === 'TERMS_CONDITIONS' && (
           <TermsConditionsScreen onBack={() => setScreen('PROFILE')} />
         )}
+
+        {/* Quick-report FAB — only on the map, where nothing else offers this
+            action. Home already leads with its two report tiles. */}
+        {screen === 'MAP' && (
+          <ReportFab
+            onPress={() => {
+              setReportType('ACCIDENT');
+              setScreen('REPORT');
+            }}
+          />
+        )}
       </View>
 
-      {/* Google Material 3 Navigation Bar */}
       {TAB_SCREENS.includes(screen) && (
-        <View style={styles.tabBar}>
-          {/* Home */}
-          <TouchableOpacity
-            style={styles.tabItem}
-            onPress={() => setScreen('HOME')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.pillContainer, isHomeActive && styles.pillActive]}>
-              <Icon
-                name={isHomeActive ? 'home-filled' : 'home'}
-                size={20}
-                color={isHomeActive ? colors.primary : colors.textSecondary}
-              />
-            </View>
-            <Text style={[styles.tabLabel, isHomeActive && styles.tabLabelActive]}>Home</Text>
-          </TouchableOpacity>
-
-          {/* Map */}
-          <TouchableOpacity
-            style={styles.tabItem}
-            onPress={() => setScreen('MAP')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.pillContainer, isMapActive && styles.pillActive]}>
-              <Icon
-                name={isMapActive ? 'map-filled' : 'map'}
-                size={20}
-                color={isMapActive ? colors.primary : colors.textSecondary}
-              />
-            </View>
-            <Text style={[styles.tabLabel, isMapActive && styles.tabLabelActive]}>Live Map</Text>
-          </TouchableOpacity>
-
-          {/* Reports */}
-          <TouchableOpacity
-            style={styles.tabItem}
-            onPress={() => setScreen('MY_REPORTS')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.pillContainer, isReportsActive && styles.pillActive]}>
-              <Icon
-                name={isReportsActive ? 'reports-filled' : 'reports'}
-                size={20}
-                color={isReportsActive ? colors.primary : colors.textSecondary}
-              />
-            </View>
-            <Text style={[styles.tabLabel, isReportsActive && styles.tabLabelActive]}>Reports</Text>
-          </TouchableOpacity>
-
-          {/* Alerts */}
-          <TouchableOpacity
-            style={styles.tabItem}
-            onPress={() => setScreen('ROAD_ALERTS')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.pillContainer, isAlertsActive && styles.pillActive]}>
-              <Icon
-                name={isAlertsActive ? 'alerts-filled' : 'alerts'}
-                size={20}
-                color={isAlertsActive ? colors.primary : colors.textSecondary}
-              />
-            </View>
-            <Text style={[styles.tabLabel, isAlertsActive && styles.tabLabelActive]}>Alerts</Text>
-          </TouchableOpacity>
-
-          {/* Profile */}
-          <TouchableOpacity
-            style={styles.tabItem}
-            onPress={() => setScreen('PROFILE')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.pillContainer, isProfileActive && styles.pillActive]}>
-              <Icon
-                name={isProfileActive ? 'profile-filled' : 'profile'}
-                size={20}
-                color={isProfileActive ? colors.primary : colors.textSecondary}
-              />
-            </View>
-            <Text style={[styles.tabLabel, isProfileActive && styles.tabLabelActive]}>Profile</Text>
-          </TouchableOpacity>
-        </View>
+        <TabBar
+          items={TAB_ITEMS}
+          activeKey={activeTabKey}
+          onSelect={(key) => setScreen(key as ScreenState)}
+        />
       )}
     </SafeAreaView>
+    </AreaProvider>
   );
 }
 
@@ -398,45 +384,5 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 12 : 8,
-    paddingHorizontal: 8,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pillContainer: {
-    width: 48,
-    height: 28,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  pillActive: {
-    backgroundColor: colors.primaryLight,
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    letterSpacing: 0.1,
-  },
-  tabLabelActive: {
-    color: colors.primaryDark,
-    fontWeight: '700',
   },
 });

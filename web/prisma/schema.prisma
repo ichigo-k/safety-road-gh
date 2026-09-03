@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -69,10 +69,46 @@ model RoadAlert {
   longitude   Float?
   severity    String        @default("MEDIUM")
   active      Boolean       @default(true)
+  // Geofenced broadcast: when set alongside a coordinate, only devices within
+  // this radius receive the alert. Null means network-wide.
+  radius_km   Float?
   created_at  DateTime      @default(now())
   updated_at  DateTime      @updatedAt
 
   @@map("road_alerts")
+}
+
+/// An accident-prone area. Rows with source = DERIVED are rebuilt from
+/// incident reports by lib/hotspots.ts; OFFICIAL rows are entered by MTTD and
+/// are never overwritten by a recompute.
+model Hotspot {
+  id               String    @id @default(uuid())
+  name             String
+  latitude         Float
+  longitude        Float
+  /// Alert geofence radius. Derived from how far the member incidents spread.
+  radius_m         Int       @default(400)
+  /// 0-100, saturating. Combines incident count, recency, type and casualties.
+  risk_score       Float     @default(0)
+  severity         String    @default("MEDIUM")
+  dominant_type    String    @default("ACCIDENT")
+  incident_count   Int       @default(0)
+  casualty_count   Int       @default(0)
+  /// JSON array of 24 floats, 0-1, risk by hour of day. SQLite has no native
+  /// JSON column through Prisma, so this is stored as text.
+  hour_profile     String    @default("[]")
+  /// ACTIVE | MONITORING | UNDER_REPAIR | MITIGATED
+  status           String    @default("ACTIVE")
+  /// DERIVED | OFFICIAL
+  source           String    @default("DERIVED")
+  notes            String?
+  last_incident_at DateTime?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  @@index([latitude, longitude])
+  @@index([status])
+  @@map("hotspots")
 }
 
 model EmergencyService {

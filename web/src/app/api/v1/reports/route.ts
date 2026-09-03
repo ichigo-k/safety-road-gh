@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyRequestAuth } from '@/lib/auth';
+import { distanceMeters } from '@/lib/geo';
 
 export async function GET(req: NextRequest) {
   try {
@@ -69,7 +70,37 @@ export async function GET(req: NextRequest) {
     if (type) allReports = allReports.filter((r) => r.type === type);
     if (status) allReports = allReports.filter((r) => r.status === status);
 
-    return NextResponse.json({ reports: allReports });
+    // Optional geofilter. The mobile app scopes everything to the area the
+    // user is looking at, so a driver in Tamale is not shown incidents in
+    // Accra. Omitting the coordinates returns the national set, which is
+    // what the admin console wants.
+    const num = (k: string) => {
+      const raw = searchParams.get(k);
+      if (raw === null || raw.trim() === '') return null;
+      const v = Number(raw);
+      return Number.isFinite(v) ? v : null;
+    };
+    const lat = num('lat');
+    const lng = num('lng');
+    const radiusKm = num('radiusKm') ?? 40;
+
+    if (lat !== null && lng !== null) {
+      const origin = { latitude: lat, longitude: lng };
+      allReports = allReports
+        .filter((r) => Number.isFinite(r.latitude) && Number.isFinite(r.longitude))
+        .map((r) => ({
+          ...r,
+          distanceM: Math.round(
+            distanceMeters(origin, { latitude: r.latitude, longitude: r.longitude })
+          ),
+        }))
+        .filter((r) => r.distanceM <= radiusKm * 1000)
+        .sort((a, b) => a.distanceM - b.distanceM);
+
+      return NextResponse.json({ reports: allReports, scoped: true, radiusKm });
+    }
+
+    return NextResponse.json({ reports: allReports, scoped: false });
   } catch (error: any) {
     console.error('Fetch reports error:', error);
     return NextResponse.json({ error: 'Failed to fetch reports' }, { status: 500 });

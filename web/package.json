@@ -6,7 +6,9 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "hotspots:recompute": "npx tsx scripts/recompute-hotspots.ts",
+    "check:hotspots": "npx tsx scripts/check-hotspots.ts"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.74.7",

@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminLoginPage() {
@@ -34,19 +34,19 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[#f7f7f7] px-5 py-12">
+    <main className="flex min-h-[100dvh] items-center justify-center bg-ink-50 px-5 py-12">
       <div className="w-full max-w-[400px]">
 
         {/* Brand */}
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#111111]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-brand">
             <ShieldCheck className="h-5 w-5 text-white" strokeWidth={2.2} />
           </div>
           <div>
-            <p className="text-[14px] font-extrabold leading-none tracking-[-0.02em] text-[#111111]">
+            <p className="text-base font-semibold leading-none text-ink-900">
               Safety Road
             </p>
-            <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#999999]">
+            <p className="mt-0.5 text-caption text-ink-500">
               Ghana Admin
             </p>
           </div>
@@ -54,13 +54,10 @@ export default function AdminLoginPage() {
 
         {/* Heading */}
         <div className="mb-7">
-          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-[#e5e5e5] bg-white">
-            <LockKeyhole className="h-4 w-4 text-[#555555]" />
-          </div>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.04em] text-[#111111]">
+          <h1 className="text-metric font-semibold tracking-[-0.04em] text-ink-900">
             Welcome back.
           </h1>
-          <p className="mt-1.5 text-[13px] text-[#999999]">
+          <p className="mt-1.5 text-body text-ink-500">
             Sign in to manage incidents and alerts.
           </p>
         </div>
@@ -68,7 +65,7 @@ export default function AdminLoginPage() {
         {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#999999]">
+            <label className="mb-1.5 block text-micro font-semibold text-ink-500">
               Email address
             </label>
             <input
@@ -77,12 +74,12 @@ export default function AdminLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@agency.gov.gh"
-              className="w-full rounded-lg border border-[#e5e5e5] bg-white px-3.5 py-3 text-[13px] text-[#111111] outline-none placeholder:text-[#c4c4c4] focus:border-[#111111] transition"
+              className="w-full rounded-sm border border-line bg-white px-3.5 py-3 text-body text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand transition"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#999999]">
+            <label className="mb-1.5 block text-micro font-semibold text-ink-500">
               Password
             </label>
             <input
@@ -91,12 +88,12 @@ export default function AdminLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              className="w-full rounded-lg border border-[#e5e5e5] bg-white px-3.5 py-3 text-[13px] text-[#111111] outline-none placeholder:text-[#c4c4c4] focus:border-[#111111] transition"
+              className="w-full rounded-sm border border-line bg-white px-3.5 py-3 text-body text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand transition"
             />
           </div>
 
           {error && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[12px] font-medium text-red-700">
+            <p role="alert" className="rounded-sm bg-danger-soft px-3.5 py-2.5 text-body font-medium text-danger-dark">
               {error}
             </p>
           )}
@@ -104,14 +101,14 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#111111] py-3 text-[13px] font-semibold text-white transition hover:bg-[#333333] disabled:opacity-50 active:scale-[0.98]"
+            className="flex w-full items-center justify-center gap-2 rounded-sm bg-brand py-3 text-body font-semibold text-white transition hover:bg-brand-press disabled:opacity-50 active:scale-[0.98]"
           >
             {loading ? 'Signing in…' : 'Sign in'}
             {!loading && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>
 
-        <p className="mt-7 text-center text-[11px] text-[#c4c4c4]">
+        <p className="mt-7 text-center text-micro text-ink-400">
           Authorized personnel only. Access is monitored.
         </p>
       </div>

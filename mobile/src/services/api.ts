@@ -13,11 +13,11 @@ async function setStorageItem(key: string, value: string) {
   if (Platform.OS === 'web') {
     try {
       localStorage.setItem(key, value);
-    } catch (e) {}
+    } catch (e) { }
   } else {
     try {
       await SecureStore.setItemAsync(key, value);
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 
@@ -41,11 +41,11 @@ async function removeStorageItem(key: string) {
   if (Platform.OS === 'web') {
     try {
       localStorage.removeItem(key);
-    } catch (e) {}
+    } catch (e) { }
   } else {
     try {
       await SecureStore.deleteItemAsync(key);
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 
@@ -68,6 +68,10 @@ export async function saveUserData(user: any) {
 export async function getUserData(): Promise<any | null> {
   const data = await getStorageItem(USER_KEY);
   return data ? JSON.parse(data) : null;
+}
+
+export async function removeUserData() {
+  await removeStorageItem(USER_KEY);
 }
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {

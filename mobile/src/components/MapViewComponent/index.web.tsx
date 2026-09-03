@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  Dimensions,
-  GestureResponderEvent,
-} from 'react-native';
-import Icon from '../Icon';
+/* ─── Map (Expo web) ───────────────────────────────────────────────────────
+ *
+ * Expo resolves this file for the web target and index.native.tsx for iOS and
+ * Android, so `azure-maps-control` never reaches a native bundle.
+ *
+ * What this replaces: the previous web variant drew a fake map — coloured
+ * circles positioned by hand inside a plain <View>, with no tiles, no panning
+ * and no real projection. It looked like a map and told you nothing about
+ * where anything actually was. This is the same Azure basemap the admin
+ * console and the native app use.
+ * ------------------------------------------------------------------------ */
+
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import * as atlas from 'azure-maps-control';
+import 'azure-maps-control/dist/atlas.min.css';
+import { colors, radius, spacing, typography } from '../../theme';
 
 export interface MapMarkerData {
   id: string;
@@ -19,6 +26,8 @@ export interface MapMarkerData {
   status?: string;
   color?: string;
   clusterCount?: number;
+  /** Alert geofence radius in metres, drawn as a real ground circle. */
+  radiusM?: number;
 }
 
 export interface MapViewComponentProps {
@@ -39,6 +48,16 @@ export interface MapViewComponentProps {
   }) => void;
   draggablePin?: { latitude: number; longitude: number };
   onPinDragEnd?: (coords: { latitude: number; longitude: number }) => void;
+  /** Route polyline, drawn beneath the markers. */
+  routePoints?: { latitude: number; longitude: number }[];
+}
+
+const AZURE_KEY = process.env.EXPO_PUBLIC_AZURE_MAPS_KEY;
+
+/** Latitude span to an Azure zoom level, near enough for an initial view. */
+function zoomForDelta(latitudeDelta: number): number {
+  if (!latitudeDelta || latitudeDelta <= 0) return 12;
+  return Math.max(2, Math.min(18, Math.log2(360 / latitudeDelta)));
 }
 
 export default function MapViewComponent({
@@ -48,301 +67,257 @@ export default function MapViewComponent({
   style,
   draggablePin,
   onPinDragEnd,
+  routePoints,
 }: MapViewComponentProps) {
-  const [layout, setLayout] = useState({ width: Dimensions.get('window').width, height: 600 });
-  const [zoom, setZoom] = useState(1);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const routeSourceRef = useRef<atlas.source.DataSource | null>(null);
+  const mapRef = useRef<atlas.Map | null>(null);
+  const sourceRef = useRef<atlas.source.DataSource | null>(null);
+  const pinRef = useRef<atlas.HtmlMarker | null>(null);
+  const markersRef = useRef<MapMarkerData[]>(markers);
+  const [ready, setReady] = useState(false);
 
-  const width = layout.width || 360;
-  const height = layout.height || 500;
+  markersRef.current = markers;
 
-  // Compute map bounds with padding
-  const allLats = markers
-    .map((m) => m.latitude)
-    .concat(draggablePin ? [draggablePin.latitude] : [])
-    .concat([region.latitude]);
-  const allLngs = markers
-    .map((m) => m.longitude)
-    .concat(draggablePin ? [draggablePin.longitude] : [])
-    .concat([region.longitude]);
+  // ── Create once ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!AZURE_KEY || !hostRef.current || mapRef.current) return;
 
-  const minLat = Math.min(...allLats) - (0.04 / zoom);
-  const maxLat = Math.max(...allLats) + (0.04 / zoom);
-  const minLng = Math.min(...allLngs) - (0.04 / zoom);
-  const maxLng = Math.max(...allLngs) + (0.04 / zoom);
+    const map = new atlas.Map(hostRef.current, {
+      center: [region.longitude, region.latitude],
+      zoom: zoomForDelta(region.latitudeDelta),
+      style: 'road',
+      language: 'en-US',
+      showFeedbackLink: false,
+      authOptions: {
+        authType: atlas.AuthenticationType.subscriptionKey,
+        subscriptionKey: AZURE_KEY,
+      },
+    });
+    mapRef.current = map;
 
-  const geoToPixel = (lat: number, lng: number) => {
-    const x = ((lng - minLng) / (maxLng - minLng || 0.1)) * (width - 60) + 30;
-    const y = ((maxLat - lat) / (maxLat - minLat || 0.1)) * (height - 60) + 30;
-    return {
-      x: Math.max(16, Math.min(width - 16, x)),
-      y: Math.max(16, Math.min(height - 16, y)),
+    map.events.add('ready', () => {
+      // The route lives in its own source so redrawing it never disturbs the
+      // hotspot layer, and it is added first so the line sits underneath.
+      const routeSource = new atlas.source.DataSource();
+      map.sources.add(routeSource);
+      routeSourceRef.current = routeSource;
+      map.layers.add(
+        new atlas.layer.LineLayer(routeSource, undefined, {
+          strokeColor: '#2B5F9E',
+          strokeWidth: 5,
+          strokeOpacity: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round',
+        })
+      );
+
+      const source = new atlas.source.DataSource();
+      map.sources.add(source);
+      sourceRef.current = source;
+
+      // Geofence rings. Azure renders a Point tagged subType "Circle" as a
+      // true ground circle, so the ring is the real alert radius at every
+      // zoom rather than a fixed pixel size that lies as you zoom out.
+      map.layers.add(
+        new atlas.layer.PolygonLayer(source, undefined, {
+          fillColor: ['get', 'color'],
+          fillOpacity: 0.15,
+          filter: ['==', ['geometry-type'], 'Polygon'],
+        })
+      );
+      map.layers.add(
+        new atlas.layer.LineLayer(source, undefined, {
+          strokeColor: ['get', 'color'],
+          strokeWidth: 1.5,
+          strokeOpacity: 0.6,
+          filter: ['==', ['geometry-type'], 'Polygon'],
+        })
+      );
+
+      const bubbles = new atlas.layer.BubbleLayer(source, undefined, {
+        radius: [
+          'interpolate',
+          ['linear'],
+          ['get', 'count'],
+          1, 7,
+          20, 20,
+        ],
+        color: ['get', 'color'],
+        strokeColor: '#FFFFFF',
+        strokeWidth: 2,
+        filter: ['==', ['geometry-type'], 'Point'],
+      });
+      map.layers.add(bubbles);
+
+      map.layers.add(
+        new atlas.layer.SymbolLayer(source, undefined, {
+          iconOptions: { image: 'none' },
+          textOptions: {
+            textField: ['case', ['>', ['get', 'count'], 1], ['to-string', ['get', 'count']], ''],
+            color: '#FFFFFF',
+            size: 11,
+            offset: [0, 0.1],
+            allowOverlap: true,
+          },
+          filter: ['==', ['geometry-type'], 'Point'],
+        })
+      );
+
+      map.events.add('click', bubbles, (e) => {
+        const shape = e.shapes?.[0];
+        if (!shape || !('getProperties' in shape)) return;
+        const id = (shape.getProperties() as { id?: string }).id;
+        const hit = markersRef.current.find((m) => m.id === id);
+        if (hit) onMarkerPress?.(hit);
+      });
+
+      map.events.add('mouseenter', bubbles, () => {
+        map.getCanvasContainer().style.cursor = 'pointer';
+      });
+      map.events.add('mouseleave', bubbles, () => {
+        map.getCanvasContainer().style.cursor = 'grab';
+      });
+
+      setReady(true);
+    });
+
+    return () => {
+      map.dispose();
+      mapRef.current = null;
+      sourceRef.current = null;
+      pinRef.current = null;
     };
-  };
+    // Mount-only: rebuilding on prop changes would reset the user's pan/zoom.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const pixelToGeo = (x: number, y: number) => {
-    const lng = minLng + ((x - 30) / (width - 60)) * (maxLng - minLng);
-    const lat = maxLat - ((y - 30) / (height - 60)) * (maxLat - minLat);
-    return { latitude: lat, longitude: lng };
-  };
+  // ── Feed markers ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const source = sourceRef.current;
+    if (!ready || !source) return;
 
-  const handleMapPress = (e: GestureResponderEvent) => {
-    if (draggablePin && onPinDragEnd) {
-      const { locationX, locationY } = e.nativeEvent;
-      const coords = pixelToGeo(locationX, locationY);
-      onPinDragEnd(coords);
+    source.clear();
+    for (const m of markers) {
+      if (!Number.isFinite(m.latitude) || !Number.isFinite(m.longitude)) continue;
+      const props = {
+        id: m.id,
+        color: m.color ?? colors.danger,
+        count: m.clusterCount ?? 1,
+        title: m.title,
+      };
+      if (m.radiusM && m.radiusM > 0) {
+        source.add(
+          new atlas.data.Feature(new atlas.data.Point([m.longitude, m.latitude]), {
+            ...props,
+            subType: 'Circle',
+            radius: m.radiusM,
+          })
+        );
+      }
+      source.add(
+        new atlas.data.Feature(new atlas.data.Point([m.longitude, m.latitude]), props)
+      );
     }
-  };
+  }, [markers, ready]);
+
+  // ── Route polyline ────────────────────────────────────────────────────
+  useEffect(() => {
+    const source = routeSourceRef.current;
+    const map = mapRef.current;
+    if (!ready || !source || !map) return;
+
+    source.clear();
+    if (!routePoints || routePoints.length < 2) return;
+
+    source.add(
+      new atlas.data.Feature(
+        new atlas.data.LineString(routePoints.map((p) => [p.longitude, p.latitude]))
+      )
+    );
+
+    // Frame the whole journey — a route preview that opens zoomed to the
+    // start tells you nothing about what is further along it.
+    map.setCamera({
+      bounds: atlas.data.BoundingBox.fromPositions(
+        routePoints.map((p) => [p.longitude, p.latitude])
+      ),
+      padding: 48,
+    });
+  }, [routePoints, ready]);
+
+  // ── Draggable pin (location picker) ───────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+
+    if (!draggablePin) {
+      if (pinRef.current) {
+        map.markers.remove(pinRef.current);
+        pinRef.current = null;
+      }
+      return;
+    }
+
+    if (!pinRef.current) {
+      const marker = new atlas.HtmlMarker({
+        draggable: true,
+        color: colors.primary,
+        position: [draggablePin.longitude, draggablePin.latitude],
+      });
+      map.markers.add(marker);
+      map.events.add('dragend', marker, () => {
+        const [lng, lat] = marker.getOptions().position as atlas.data.Position;
+        onPinDragEnd?.({ latitude: lat, longitude: lng });
+      });
+      pinRef.current = marker;
+    } else {
+      pinRef.current.setOptions({
+        position: [draggablePin.longitude, draggablePin.latitude],
+      });
+    }
+  }, [draggablePin, ready, onPinDragEnd]);
+
+  if (!AZURE_KEY) {
+    return (
+      <View style={[s.fallback, style]}>
+        <Text style={s.fallbackTitle}>Map not configured</Text>
+        <Text style={s.fallbackBody}>
+          Set EXPO_PUBLIC_AZURE_MAPS_KEY in mobile/.env and restart Expo.
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <View
-      style={[styles.container, style]}
-      onLayout={(e) => {
-        const { width: w, height: h } = e.nativeEvent.layout;
-        if (w > 0 && h > 0) setLayout({ width: w, height: h });
-      }}
-      onTouchEnd={draggablePin ? handleMapPress : undefined}
-    >
-      {/* Background Map Grid & Roads */}
-      <View style={styles.gridContainer}>
-        {[0.15, 0.35, 0.55, 0.75, 0.9].map((frac) => (
-          <View key={`h-${frac}`} style={[styles.gridH, { top: `${frac * 100}%` }]} />
-        ))}
-        {[0.15, 0.35, 0.55, 0.75, 0.9].map((frac) => (
-          <View key={`v-${frac}`} style={[styles.gridV, { left: `${frac * 100}%` }]} />
-        ))}
-      </View>
-
-      {/* Road Highway Vector lines */}
-      <View style={styles.highwayLine1} />
-      <View style={styles.highwayLine2} />
-
-      {/* Live Map Watermark */}
-      <View style={styles.watermark}>
-        <Text style={styles.watermarkText}>GHANA ROAD TELEMETRY GIS</Text>
-      </View>
-
-      {/* Markers */}
-      {markers.map((m) => {
-        const pos = geoToPixel(m.latitude, m.longitude);
-        const isAccident = m.type === 'ACCIDENT';
-        const isEmergency = m.type === 'EMERGENCY';
-        const isUser = m.type === 'USER';
-        const markerColor =
-          m.color ||
-          (isAccident ? '#DC2626' : isEmergency ? '#1D4ED8' : isUser ? '#2563EB' : '#F59E0B');
-
-        if (isUser) {
-          return (
-            <View key={m.id} style={[styles.userMarker, { left: pos.x - 12, top: pos.y - 12 }]}>
-              <View style={styles.userDot} />
-            </View>
-          );
-        }
-
-        return (
-          <TouchableOpacity
-            key={m.id}
-            activeOpacity={0.8}
-            style={[styles.markerPin, { left: pos.x - 16, top: pos.y - 16 }]}
-            onPress={() => onMarkerPress?.(m)}
-          >
-            {/* Cluster count or icon */}
-            <View style={[styles.pinBubble, { backgroundColor: markerColor }]}>
-              {m.clusterCount && m.clusterCount > 1 ? (
-                <Text style={styles.clusterCountText}>{m.clusterCount}</Text>
-              ) : (
-                <Icon
-                  name={isAccident ? 'accident' : isEmergency ? 'police' : 'hazard'}
-                  size={14}
-                  color="#ffffff"
-                />
-              )}
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-
-      {/* Draggable pin */}
-      {draggablePin && (
-        <View
-          style={[
-            styles.draggablePinWrap,
-            {
-              left: geoToPixel(draggablePin.latitude, draggablePin.longitude).x - 16,
-              top: geoToPixel(draggablePin.latitude, draggablePin.longitude).y - 32,
-            },
-          ]}
-        >
-          <View style={styles.draggablePinBody}>
-            <Icon name="location" size={24} color="#0B7A46" />
-          </View>
+    <View style={[StyleSheet.absoluteFill, style]}>
+      {/* react-native-web renders View as a div, so the Azure control can be
+          mounted into a plain child element. */}
+      <div ref={hostRef} style={{ width: '100%', height: '100%' }} />
+      {!ready ? (
+        <View style={s.loading} pointerEvents="none">
+          <Text style={s.fallbackBody}>Loading map…</Text>
         </View>
-      )}
-
-      {/* Zoom controls */}
-      <View style={styles.zoomControls}>
-        <TouchableOpacity
-          style={styles.zoomBtn}
-          onPress={() => setZoom((z) => Math.min(z + 0.3, 2.5))}
-        >
-          <Text style={styles.zoomText}>+</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.zoomBtn}
-          onPress={() => setZoom((z) => Math.max(z - 0.3, 0.6))}
-        >
-          <Text style={styles.zoomText}>−</Text>
-        </TouchableOpacity>
-      </View>
+      ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#eaf4ee',
-    overflow: 'hidden',
-  },
-  gridContainer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  gridH: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(11, 122, 70, 0.08)',
-  },
-  gridV: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: 'rgba(11, 122, 70, 0.08)',
-  },
-  highwayLine1: {
-    position: 'absolute',
-    top: '40%',
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    transform: [{ rotate: '-8deg' }],
-  },
-  highwayLine2: {
-    position: 'absolute',
-    left: '48%',
-    top: 0,
-    bottom: 0,
-    width: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    transform: [{ rotate: '12deg' }],
-  },
-  watermark: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  watermarkText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#0B7A46',
-    letterSpacing: 0.6,
-  },
-  markerPin: {
-    position: 'absolute',
-    zIndex: 6,
-  },
-  pinBubble: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+const s = StyleSheet.create({
+  fallback: {
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 4,
+    backgroundColor: colors.surfaceSunken,
+    padding: spacing.xl,
+    borderRadius: radius.md,
   },
-  clusterCountText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  userMarker: {
-    position: 'absolute',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(37, 99, 235, 0.25)',
+  fallbackTitle: { ...typography.title, marginBottom: 4 },
+  fallbackBody: { ...typography.callout, textAlign: 'center', color: colors.textSubtle },
+  loading: {
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(37, 99, 235, 0.5)',
-    zIndex: 10,
-  },
-  userDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#2563EB',
-    borderWidth: 1.5,
-    borderColor: '#ffffff',
-  },
-  draggablePinWrap: {
-    position: 'absolute',
-    zIndex: 12,
-  },
-  draggablePinBody: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  zoomControls: {
-    position: 'absolute',
-    right: 14,
-    top: 100,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    zIndex: 20,
-  },
-  zoomBtn: {
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  zoomText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    backgroundColor: colors.surfaceSunken,
   },
 });

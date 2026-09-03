@@ -1,7 +1,20 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
-import Icon from '../components/Icon';
-import { colors, typography, spacing, radius, shadows } from '../theme';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { Button, Screen } from '../components/ui';
+import { colors, motion, spacing, typography } from '../theme';
+
+import MotionAlert from '../../assets/onboarding/undraw_motion-alert_pr1a.svg';
+import PhoneCall from '../../assets/onboarding/undraw_phone-call_ov3z.svg';
+import SmartwatchMap from '../../assets/onboarding/undraw_smartwatch-map_3u18.svg';
 
 interface OnboardingScreenProps {
   onFinish: () => void;
@@ -9,184 +22,147 @@ interface OnboardingScreenProps {
 
 const slides = [
   {
-    number: '01',
-    icon: 'accident',
-    iconColor: colors.googleRed,
-    iconBg: colors.googleRedLight,
-    title: 'Report Incidents & Hazards',
+    key: 'report',
+    Art: MotionAlert,
+    title: 'Report what you see on the road',
     description:
-      'Capture exact GPS coordinates and snap live evidence of collisions, potholes, and road dangers directly to Ghana Police MTTD.',
+      'Pin the exact spot, add a photo, and send it straight to the Ghana Police MTTD. Collisions, potholes, flooding — anything that puts drivers at risk.',
   },
   {
-    number: '02',
-    icon: 'ambulance',
-    iconColor: colors.googleBlue,
-    iconBg: colors.googleBlueLight,
-    title: 'Instant Emergency Response',
+    key: 'emergency',
+    Art: PhoneCall,
+    title: 'Reach help in one tap',
     description:
-      'Direct 1-tap toll-free calling to Ambulance (193), Police (18555 / 112), and Fire Service (192) across all Ghana regions.',
+      'Ambulance on 193, Police MTTD on 18555, Fire Service on 192. All toll free, all reachable without leaving the app.',
   },
   {
-    number: '03',
-    icon: 'map',
-    iconColor: colors.primary,
-    iconBg: colors.primaryLight,
-    title: 'Live Highway Radar & Alerts',
+    key: 'map',
+    Art: SmartwatchMap,
+    title: 'Know the road before you drive it',
     description:
-      'Explore active road warnings, hazard hotspots, traffic updates, and safety manuals verified by road safety authorities.',
+      'Live hazard hotspots, closures and advisories verified by road safety authorities, mapped across every region.',
   },
 ];
 
 export default function OnboardingScreen({ onFinish }: OnboardingScreenProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [index, setIndex] = useState(0);
+  const { width } = useWindowDimensions();
 
-  const handleNext = () => {
-    if (currentIndex < slides.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      onFinish();
-    }
-  };
+  // Onboarding is seen once, so it sits in the tier where a transition earns
+  // its place: it stops the illustration and copy swapping abruptly. Transform
+  // and opacity only, ~220ms, and it never blocks the Next button.
+  const enter = useRef(new Animated.Value(1)).current;
 
-  const currentSlide = slides[currentIndex];
+  useEffect(() => {
+    enter.setValue(0);
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.bezier(...motion.easeOut),
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }, [index, enter]);
+
+  const slide = slides[index];
+  const isLast = index === slides.length - 1;
+
+  const artWidth = Math.min(width - spacing.xl * 2, 340);
+  const artHeight = Math.min(artWidth * 0.82, 280);
+
+  const translateY = enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <View style={styles.content}>
-        {/* Top bar with Skip button */}
-        <View style={styles.topRow}>
-          <TouchableOpacity style={styles.skipBtn} onPress={onFinish} activeOpacity={0.7}>
-            <Text style={styles.skipText}>Skip</Text>
-          </TouchableOpacity>
+    <Screen>
+      <View style={s.root}>
+        {/* ── Skip ────────────────────────────────────────────────────────── */}
+        <View style={s.topRow}>
+          <Pressable
+            onPress={onFinish}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Skip onboarding"
+          >
+            <Text style={s.skip}>Skip</Text>
+          </Pressable>
         </View>
 
-        {/* Slide Body */}
-        <View style={styles.slideArea}>
-          <View style={[styles.iconContainer, { backgroundColor: currentSlide.iconBg }]}>
-            <Icon name={currentSlide.icon} size={36} color={currentSlide.iconColor} />
+        {/* ── Slide ───────────────────────────────────────────────────────── */}
+        <Animated.View style={[s.slide, { opacity: enter, transform: [{ translateY }] }]}>
+          <View style={[s.art, { width: artWidth, height: artHeight }]}>
+            {/* preserveAspectRatio does the fitting, so illustrations with
+                very different aspect ratios still sit in an identical box. */}
+            <slide.Art width={artWidth} height={artHeight} />
           </View>
-          <Text style={styles.slideStep}>FEATURE {currentSlide.number}</Text>
-          <Text style={styles.slideTitle}>{currentSlide.title}</Text>
-          <Text style={styles.slideDesc}>{currentSlide.description}</Text>
-        </View>
 
-        {/* Bottom Navigation Area */}
-        <View style={styles.bottomArea}>
-          <View style={styles.dotsRow}>
-            {slides.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  i === currentIndex && [styles.dotActive, { backgroundColor: colors.primary }],
-                ]}
-              />
+          <Text style={s.title}>{slide.title}</Text>
+          <Text style={s.description}>{slide.description}</Text>
+        </Animated.View>
+
+        {/* ── Controls ────────────────────────────────────────────────────── */}
+        <View style={s.bottom}>
+          <View style={s.dots} accessibilityRole="tablist">
+            {slides.map((item, i) => (
+              <Pressable
+                key={item.key}
+                onPress={() => setIndex(i)}
+                hitSlop={10}
+                accessibilityRole="tab"
+                accessibilityLabel={`Step ${i + 1} of ${slides.length}`}
+                accessibilityState={{ selected: i === index }}
+              >
+                <View style={[s.dot, i === index && s.dotActive]} />
+              </Pressable>
             ))}
           </View>
-          <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.85}>
-            <Text style={styles.nextBtnText}>
-              {currentIndex === slides.length - 1 ? 'Get Started' : 'Next Step'}
-            </Text>
-          </TouchableOpacity>
+
+          <Button
+            label={isLast ? 'Get started' : 'Next'}
+            size="lg"
+            full
+            onPress={() => (isLast ? onFinish() : setIndex(index + 1))}
+          />
         </View>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
+const s = StyleSheet.create({
+  root: {
     flex: 1,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xxl,
     justifyContent: 'space-between',
   },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  skipBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  skipText: {
-    ...typography.caption,
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  slideArea: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: spacing.xl,
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-    ...shadows.card,
-  },
-  slideStep: {
-    ...typography.label,
-    color: colors.primaryDark,
-    marginBottom: 6,
-  },
-  slideTitle: {
-    ...typography.headline,
-    fontSize: 22,
-    color: colors.textPrimary,
+
+  topRow: { flexDirection: 'row', justifyContent: 'flex-end', minHeight: 32 },
+  skip: { fontSize: 15, fontWeight: '500', color: colors.textSubtle },
+
+  slide: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  art: { alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xxl },
+
+  title: {
+    ...typography.display,
+    fontSize: 27,
+    lineHeight: 33,
     textAlign: 'center',
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.sm,
   },
-  slideDesc: {
+  description: {
     ...typography.body,
-    color: colors.textSecondary,
+    color: colors.textSubtle,
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
+    maxWidth: 330,
   },
-  bottomArea: {
-    gap: spacing.xl,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-  },
+
+  bottom: { gap: spacing.xl },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm },
   dot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
-    backgroundColor: colors.border,
+    backgroundColor: colors.borderStrong,
   },
-  dotActive: {
-    width: 24,
-    height: 8,
-    borderRadius: 4,
-  },
-  nextBtn: {
-    backgroundColor: colors.primary,
-    height: 50,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.card,
-  },
-  nextBtnText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  dotActive: { width: 22, backgroundColor: colors.primary },
 });

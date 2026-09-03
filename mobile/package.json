@@ -4,16 +4,23 @@
   "main": "index.ts",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "azure-maps-control": "^3.7.4",
     "expo": "~57.0.16",
+    "expo-haptics": "~57.0.2",
     "expo-image-picker": "~57.0.14",
     "expo-location": "~57.0.14",
+    "expo-notifications": "~57.0.16",
     "expo-secure-store": "~57.0.2",
+    "expo-speech": "~57.0.2",
     "expo-status-bar": "~57.0.1",
+    "expo-task-manager": "~57.0.15",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
     "react-native-maps": "^1.29.0",
     "react-native-svg": "15.15.4",
+    "react-native-svg-transformer": "^1.5.3",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
@@ -24,7 +31,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "check:proximity": "npx tsx scripts/check-proximity.ts"
   },
   "private": true
 }

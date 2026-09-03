@@ -1,44 +1,167 @@
 import Link from 'next/link';
-import { ShieldCheck } from 'lucide-react';
+import { Download, LayoutDashboard, ShieldCheck, Smartphone } from 'lucide-react';
 
 export const metadata = {
   title: 'Safety Road GH',
-  description: 'Road safety operations platform for Ghana.',
+  description: 'Road accident and hazard reporting for Ghana.',
 };
 
-export default function RootHomePage() {
+// Re-checked every 5 minutes, so a release published by CI shows up here
+// without anyone redeploying the site.
+export const revalidate = 300;
+
+const REPO = process.env.GITHUB_RELEASES_REPO ?? 'ichigo-k/Safety-Road-GH';
+const FALLBACK_RELEASES = `https://github.com/${REPO}/releases/latest`;
+
+interface Release {
+  available: boolean;
+  version?: string | null;
+  publishedAt?: string | null;
+  releaseUrl?: string;
+  apk?: { url: string; sizeMb: number } | null;
+}
+
+async function getLatestRelease(): Promise<Release> {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        ...(process.env.GITHUB_TOKEN
+          ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
+          : {}),
+      },
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return { available: false };
+
+    const data = await res.json();
+    const apk = (data.assets ?? []).find((a: { name: string }) =>
+      a.name.toLowerCase().endsWith('.apk')
+    );
+
+    return {
+      available: true,
+      version: data.tag_name,
+      publishedAt: data.published_at,
+      releaseUrl: data.html_url,
+      apk: apk
+        ? { url: apk.browser_download_url, sizeMb: +(apk.size / 1_048_576).toFixed(1) }
+        : null,
+    };
+  } catch {
+    // The page must render even if GitHub is unreachable.
+    return { available: false };
+  }
+}
+
+export default async function RootHomePage() {
+  const release = await getLatestRelease();
+
+  const apkHref = release.apk?.url ?? release.releaseUrl ?? FALLBACK_RELEASES;
+  const apkDetail = release.apk
+    ? `APK · ${release.version} · ${release.apk.sizeMb} MB`
+    : release.available
+    ? `Latest release · ${release.version}`
+    : 'Latest release on GitHub';
+
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[#f7f8f7] px-5">
-      <div className="flex flex-col items-center text-center">
-        {/* Brand mark */}
-        <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#102018] shadow-[0_8px_32px_rgba(16,32,24,0.18)]">
-          <ShieldCheck className="h-8 w-8 text-[#2fdf76]" strokeWidth={2} />
+    <main className="flex min-h-[100dvh] items-center justify-center bg-canvas px-5 py-12">
+      <div className="w-full max-w-sm">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand">
+            <ShieldCheck className="h-6 w-6 text-white" strokeWidth={2.2} />
+          </span>
+          <div>
+            <h1 className="text-heading font-semibold text-ink-900">Safety Road</h1>
+            <p className="text-caption text-ink-500">Ghana road accident &amp; hazard network</p>
+          </div>
         </div>
 
-        <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-[#17b85a]">
-          Safety Road GH
+        <p className="mt-6 text-body text-ink-600">
+          Report accidents and road hazards, see the hotspots ahead of you, and reach emergency
+          services in one tap.
         </p>
 
-        <h1 className="mt-3 text-[2rem] font-extrabold leading-tight tracking-[-0.04em] text-[#102018]">
-          The app is running.
-        </h1>
-
-        <p className="mt-3 max-w-xs text-sm leading-6 text-[#6d7d73]">
-          Ghana road safety operations network — live and operational.
-        </p>
-
-        <Link
-          href="/admin/login"
-          className="mt-8 inline-flex h-12 items-center gap-2.5 rounded-xl bg-[#102018] px-7 text-sm font-bold text-white shadow-[0_4px_20px_rgba(16,32,24,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1e3a2a] active:scale-[0.97]"
-        >
-          Go to admin portal
-        </Link>
-
-        <div className="mt-8 flex items-center gap-2 text-[11px] text-[#a2b0a7]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#2fdf76]" />
-          Network online
+        <div className="mt-8 flex flex-col gap-3">
+          <Action
+            href="/app"
+            icon={<Smartphone className="h-5 w-5" strokeWidth={2.1} />}
+            title="Open the web app"
+            detail="Works in any browser · installable"
+            primary
+          />
+          <Action
+            href={apkHref}
+            icon={<Download className="h-5 w-5" strokeWidth={2.1} />}
+            title="Download for Android"
+            detail={apkDetail}
+            external
+          />
+          <Action
+            href="/admin"
+            icon={<LayoutDashboard className="h-5 w-5" strokeWidth={2.1} />}
+            title="Admin dashboard"
+            detail="MTTD operations console"
+          />
         </div>
+
+        {release.available && release.publishedAt ? (
+          <p className="mt-6 text-micro text-ink-400">
+            Latest build {release.version} · published{' '}
+            {new Date(release.publishedAt).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </p>
+        ) : null}
       </div>
     </main>
+  );
+}
+
+function Action({
+  href,
+  icon,
+  title,
+  detail,
+  primary,
+  external,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+  primary?: boolean;
+  external?: boolean;
+}) {
+  const className = primary
+    ? 'flex items-center gap-3 rounded-md bg-brand px-4 py-3.5 text-white transition-colors hover:bg-brand-press'
+    : 'flex items-center gap-3 rounded-md border border-line bg-surface px-4 py-3.5 text-ink-900 transition-colors hover:bg-ink-50';
+
+  const body = (
+    <>
+      <span className={primary ? 'text-white' : 'text-ink-500'}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-semibold">{title}</span>
+        <span className={`block text-micro ${primary ? 'text-white/75' : 'text-ink-500'}`}>
+          {detail}
+        </span>
+      </span>
+    </>
+  );
+
+  if (external) {
+    return (
+      <a href={href} className={className} rel="noreferrer">
+        {body}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href} className={className}>
+      {body}
+    </Link>
   );
 }

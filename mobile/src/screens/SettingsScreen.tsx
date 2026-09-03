@@ -1,254 +1,256 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Card, ListRow, Screen, ScreenHeader, SectionLabel } from '../components/ui';
 import {
-  StyleSheet,
-  Text,
-  View,
-  Switch,
-  SafeAreaView,
-  StatusBar,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-} from 'react-native';
-import Icon from '../components/Icon';
-import { colors, typography, spacing, radius, shadows } from '../theme';
+  getGeofenceStatus,
+  startGeofencing,
+  stopGeofencing,
+} from '../services/backgroundGeofence';
+import {
+  DEFAULT_PREFERENCES,
+  loadPreferences,
+  savePreferences,
+  type Preferences,
+} from '../services/preferences';
+import { clearHotspotCache } from '../services/hotspotStore';
+import { confirm, notify } from '../services/confirm';
+import { colors, spacing, typography } from '../theme';
 
 interface SettingsScreenProps {
   onBack: () => void;
 }
 
-export default function SettingsScreen({ onBack }: SettingsScreenProps) {
-  const [notifications, setNotifications] = useState(true);
-  const [gpsHighAccuracy, setGpsHighAccuracy] = useState(true);
-  const [emergencyBroadcasts, setEmergencyBroadcasts] = useState(true);
-  const [weatherAlerts, setWeatherAlerts] = useState(true);
-  const [offlineMaps, setOfflineMaps] = useState(false);
+/* Every switch here changes real behaviour and survives a restart.
+ *
+ * Previously these were plain component state: they reset on navigation and
+ * none of them affected anything. Two — "offline map caching" and a separate
+ * "high-priority broadcasts" channel — were removed rather than left in,
+ * because nothing behind them existed. A control that does nothing is worse
+ * than no control: it tells someone they have authority over a safety feature
+ * that they do not actually have. */
 
-  const handleClearCache = () => {
-    Alert.alert(
-      'Clear Cache',
-      'This will free up temporary map tiles and thumbnail caches.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear Now',
-          style: 'destructive',
-          onPress: () => Alert.alert('Cleaned', 'Cached temporary files cleared successfully.'),
-        },
-      ]
-    );
+export default function SettingsScreen({ onBack }: SettingsScreenProps) {
+  const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFERENCES);
+  const [loaded, setLoaded] = useState(false);
+
+  // Background tracking is OS state, not a stored preference — the user may
+  // have revoked the permission outside the app entirely.
+  const [backgroundAlerts, setBackgroundAlerts] = useState(false);
+  const [geofenceBusy, setGeofenceBusy] = useState(false);
+  const [geofenceNote, setGeofenceNote] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [stored, status] = await Promise.all([loadPreferences(), getGeofenceStatus()]);
+      if (cancelled) return;
+      setPrefs(stored);
+      setBackgroundAlerts(status.running && status.backgroundGranted);
+      setLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const update = async (patch: Partial<Preferences>) => {
+    // Optimistic: the switch moves under the finger, not after a disk write.
+    setPrefs((p) => ({ ...p, ...patch }));
+    await savePreferences(patch);
+  };
+
+  const toggleBackgroundAlerts = async (next: boolean) => {
+    setGeofenceBusy(true);
+    setGeofenceNote(null);
+    try {
+      if (next) {
+        const status = await startGeofencing();
+        setBackgroundAlerts(status.running);
+        if (!status.running) setGeofenceNote(status.reason ?? 'Could not start background alerts.');
+      } else {
+        await stopGeofencing();
+        setBackgroundAlerts(false);
+      }
+    } finally {
+      setGeofenceBusy(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    const ok = await confirm({
+      title: 'Clear cached data',
+      message:
+        'Removes the offline hotspot data and alert history stored on this device. ' +
+        'It downloads again next time you have signal.',
+      confirmLabel: 'Clear',
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setClearing(true);
+    try {
+      await clearHotspotCache();
+      notify('Cleared', 'Cached hotspot data has been removed from this device.');
+    } finally {
+      setClearing(false);
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* ── Top Bar ────────────────────────────────────────────────────────── */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
-            <Icon name="back" size={18} color={colors.text} />
-          </TouchableOpacity>
-          <View style={styles.headerCopy}>
-            <Text style={styles.headerTitle}>App Settings</Text>
-            <Text style={styles.headerSubtitle}>Permissions, Alerts & Telemetry Preferences</Text>
-          </View>
-        </View>
+    <Screen>
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        <ScreenHeader
+          title="App settings"
+          subtitle="How and when Safety Road warns you"
+          onBack={onBack}
+        />
 
-        {/* ── Group 1: Notifications & Broadcasts ────────────────────────────── */}
-        <Text style={styles.groupHeading}>NOTIFICATIONS & ROAD ALERTS</Text>
-        <View style={styles.settingCard}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingCopy}>
-              <Text style={styles.settingTitle}>Push Notifications</Text>
-              <Text style={styles.settingSub}>
-                Updates when Ghana MTTD verifies or resolves your reported incidents
-              </Text>
-            </View>
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: colors.border, true: colors.primaryContainer }}
-              thumbColor={notifications ? colors.primary : '#ffffff'}
-            />
-          </View>
+        {/* ── What you are warned about ───────────────────────────────────── */}
+        <SectionLabel>Hazard alerts</SectionLabel>
+        <Card padded={false}>
+          <ToggleRow
+            icon="shield"
+            label="Warn me about hotspots"
+            detail="Alerts you as you approach an accident-prone area"
+            value={prefs.hazardAlerts}
+            onChange={(v) => update({ hazardAlerts: v })}
+            disabled={!loaded}
+          />
+          <ToggleRow
+            icon="zap"
+            label="Weather advisories"
+            detail="Flooding and heavy rain warnings"
+            value={prefs.weatherAlerts}
+            onChange={(v) => update({ weatherAlerts: v })}
+            disabled={!loaded}
+            last
+          />
+        </Card>
 
-          <View style={styles.settingRow}>
-            <View style={styles.settingCopy}>
-              <Text style={styles.settingTitle}>High-Priority Highway Broadcasts</Text>
-              <Text style={styles.settingSub}>
-                Emergency traffic closures and major multi-vehicle accident warnings
-              </Text>
-            </View>
-            <Switch
-              value={emergencyBroadcasts}
-              onValueChange={setEmergencyBroadcasts}
-              trackColor={{ false: colors.border, true: colors.primaryContainer }}
-              thumbColor={emergencyBroadcasts ? colors.primary : '#ffffff'}
-            />
-          </View>
+        {/* ── How you are warned ──────────────────────────────────────────── */}
+        <SectionLabel style={s.section}>How you are warned</SectionLabel>
+        <Card padded={false}>
+          <ToggleRow
+            icon="radio"
+            label="Spoken warnings"
+            detail="Reads the warning aloud so your eyes stay on the road"
+            value={prefs.spokenAlerts}
+            onChange={(v) => update({ spokenAlerts: v })}
+            disabled={!loaded}
+          />
+          <ToggleRow
+            icon="bell"
+            label="Notifications"
+            detail="A notification you can check afterwards"
+            value={prefs.notifications}
+            onChange={(v) => update({ notifications: v })}
+            disabled={!loaded}
+          />
+          <ToggleRow
+            icon="phone"
+            label="Vibration"
+            detail="Useful when the phone is in a pocket or a mount"
+            value={prefs.haptics}
+            onChange={(v) => update({ haptics: v })}
+            disabled={!loaded}
+            last
+          />
+        </Card>
+        <Text style={s.note}>
+          Spoken warnings are the safest channel while driving. Turning all three off leaves
+          hotspots on the map but you will not be warned as you approach one.
+        </Text>
 
-          <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
-            <View style={styles.settingCopy}>
-              <Text style={styles.settingTitle}>Flash Flood & Heavy Rain Advisories</Text>
-              <Text style={styles.settingSub}>
-                Severe weather warnings along coastal and low-lying road sectors
-              </Text>
-            </View>
-            <Switch
-              value={weatherAlerts}
-              onValueChange={setWeatherAlerts}
-              trackColor={{ false: colors.border, true: colors.primaryContainer }}
-              thumbColor={weatherAlerts ? colors.primary : '#ffffff'}
-            />
-          </View>
-        </View>
+        {/* ── Location ────────────────────────────────────────────────────── */}
+        <SectionLabel style={s.section}>Location</SectionLabel>
+        <Card padded={false}>
+          <ToggleRow
+            icon="shield"
+            label="Warn me while the app is closed"
+            detail="Keeps checking the road ahead in the background"
+            value={backgroundAlerts}
+            onChange={toggleBackgroundAlerts}
+            disabled={geofenceBusy}
+          />
+          <ToggleRow
+            icon="crosshair"
+            label="High-accuracy GPS"
+            detail="Triggers warnings within about 10 m instead of 100 m"
+            value={prefs.highAccuracyGps}
+            onChange={(v) => update({ highAccuracyGps: v })}
+            disabled={!loaded}
+            last
+          />
+        </Card>
+        <Text style={s.note}>
+          {geofenceNote ??
+            'Both increase battery use. Background warnings need the "Allow all the time" ' +
+              'location permission, and an accuracy change applies next time tracking starts.'}
+        </Text>
 
-        {/* ── Group 2: GPS Telemetry & Permissions ───────────────────────────── */}
-        <Text style={styles.groupHeading}>GPS & TELEMETRY PRECISION</Text>
-        <View style={styles.settingCard}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingCopy}>
-              <Text style={styles.settingTitle}>High-Accuracy Road GPS</Text>
-              <Text style={styles.settingSub}>
-                Fine-grain meter coordinate precision when capturing accident spots
-              </Text>
-            </View>
-            <Switch
-              value={gpsHighAccuracy}
-              onValueChange={setGpsHighAccuracy}
-              trackColor={{ false: colors.border, true: colors.primaryContainer }}
-              thumbColor={gpsHighAccuracy ? colors.primary : '#ffffff'}
-            />
-          </View>
+        {/* ── Storage ─────────────────────────────────────────────────────── */}
+        <SectionLabel style={s.section}>Storage</SectionLabel>
+        <Card padded={false}>
+          <ListRow
+            icon="trash"
+            label={clearing ? 'Clearing…' : 'Clear cached data'}
+            detail="Offline hotspot data and alert history on this device"
+            onPress={clearing ? undefined : handleClearCache}
+            last
+          />
+        </Card>
 
-          <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
-            <View style={styles.settingCopy}>
-              <Text style={styles.settingTitle}>Offline Highway Map Caching</Text>
-              <Text style={styles.settingSub}>
-                Store regional road vectors for areas with weak cellular coverage
-              </Text>
-            </View>
-            <Switch
-              value={offlineMaps}
-              onValueChange={setOfflineMaps}
-              trackColor={{ false: colors.border, true: colors.primaryContainer }}
-              thumbColor={offlineMaps ? colors.primary : '#ffffff'}
-            />
-          </View>
-        </View>
-
-        {/* ── Group 3: Storage & Maintenance ─────────────────────────────────── */}
-        <Text style={styles.groupHeading}>DATA & STORAGE</Text>
-        <View style={styles.settingCard}>
-          <TouchableOpacity
-            style={styles.settingActionRow}
-            onPress={handleClearCache}
-            activeOpacity={0.75}
-          >
-            <View style={styles.settingCopy}>
-              <Text style={styles.settingTitle}>Clear Temporary Map Cache</Text>
-              <Text style={styles.settingSub}>Free up locally stored map tiles and photo data</Text>
-            </View>
-            <Icon name="chevron" size={14} color={colors.textSubtle} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ height: spacing.xxl }} />
+        <View style={{ height: spacing.xxxl }} />
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
-  },
+function ToggleRow({
+  icon,
+  label,
+  detail,
+  value,
+  onChange,
+  last,
+  disabled,
+}: {
+  icon: string;
+  label: string;
+  detail: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+  last?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <ListRow
+      icon={icon}
+      label={label}
+      detail={detail}
+      last={last}
+      right={
+        <Switch
+          value={value}
+          onValueChange={onChange}
+          disabled={disabled}
+          trackColor={{ false: colors.borderStrong, true: colors.primaryContainer }}
+          thumbColor={value ? colors.primary : '#FFFFFF'}
+          ios_backgroundColor={colors.borderStrong}
+        />
+      }
+    />
+  );
+}
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  headerCopy: {
-    flex: 1,
-  },
-  headerTitle: {
-    ...typography.headline,
-    fontSize: 18,
-    color: colors.text,
-  },
-  headerSubtitle: {
-    ...typography.caption,
-    color: colors.textSubtle,
-    marginTop: 1,
-  },
-
-  // Headings
-  groupHeading: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.textSubtle,
-    letterSpacing: 1,
-    marginBottom: spacing.xs,
-    marginLeft: 2,
+const s = StyleSheet.create({
+  scroll: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+  section: { marginTop: spacing.xxl },
+  note: {
+    ...typography.micro,
     marginTop: spacing.sm,
-  },
-
-  // Setting Cards
-  settingCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.lg,
-    overflow: 'hidden',
-    ...shadows.subtle,
-  },
-  settingRow: {
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-    gap: spacing.md,
-  },
-  settingActionRow: {
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  settingCopy: {
-    flex: 1,
-  },
-  settingTitle: {
-    ...typography.bodyStrong,
-    fontSize: 13,
-    color: colors.text,
-  },
-  settingSub: {
-    ...typography.caption,
-    color: colors.textSubtle,
-    marginTop: 2,
-    lineHeight: 16,
+    marginHorizontal: spacing.xs,
+    lineHeight: 17,
   },
 });
