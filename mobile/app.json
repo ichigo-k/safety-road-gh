@@ -50,7 +50,7 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "description": "Ghana National Road Accident & Hazard Reporting Network \u2014 Instant Emergency Help & Live Hotspot Radar",
+      "description": "Ghana National Road Accident & Hazard Reporting Network — Instant Emergency Help & Live Hotspot Radar",
       "themeColor": "#146b45",
       "backgroundColor": "#0a1a0f",
       "meta": {
@@ -79,7 +79,8 @@
           "defaultChannel": "hotspot-alerts"
         }
       ],
-      "expo-task-manager"
+      "expo-task-manager",
+      "./plugins/withReleaseSigning"
     ]
   }
 }

@@ -93,8 +93,21 @@ jobs:
           cd mobile/android
           chmod +x gradlew
 
+      # Writes the release keystore from a base64 secret. Skipped when the
+      # secret is absent, in which case withReleaseSigning.js falls back to the
+      # debug keystore and the build still succeeds — unsigned-for-Play, but
+      # installable, which is what every build did before this existed.
+      - name: Decode Release Keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
       - name: Build Android APK Release
         env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
           EXPO_PUBLIC_BACKEND_URL: ${{ secrets.EXPO_PUBLIC_API_URL || secrets.BACKEND_URL }}
           EXPO_PUBLIC_AZURE_MAPS_KEY: ${{ secrets.EXPO_PUBLIC_AZURE_MAPS_KEY }}
