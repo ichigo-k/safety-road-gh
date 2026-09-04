@@ -8,72 +8,72 @@ generator client {
 }
 
 model User {
-  id              String            @id @default(uuid())
-  full_name       String
-  email           String            @unique
-  phone           String?
-  password_hash   String
-  role            String            @default("CITIZEN")
-  is_verified     Boolean           @default(false)
-  created_at      DateTime          @default(now())
-  updated_at      DateTime          @updatedAt
+  id               String           @id @default(uuid())
+  full_name        String
+  email            String           @unique
+  phone            String?
+  password_hash    String
+  role             String           @default("CITIZEN")
+  is_verified      Boolean          @default(false)
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
   accident_reports AccidentReport[]
-  road_hazards    RoadHazard[]
-  notifications   Notification[]
+  road_hazards     RoadHazard[]
+  notifications    Notification[]
 
   @@map("users")
 }
 
 model AccidentReport {
-  id            String       @id @default(uuid())
+  id            String   @id @default(uuid())
   user_id       String
-  user          User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   accident_type String
   description   String
-  vehicle_count Int          @default(0)
-  injured_count Int          @default(0)
+  vehicle_count Int      @default(0)
+  injured_count Int      @default(0)
   latitude      Float
   longitude     Float
   location      String
   image_url     String?
-  status        String       @default("PENDING")
-  created_at    DateTime     @default(now())
-  updated_at    DateTime     @updatedAt
+  status        String   @default("PENDING")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
   @@map("accident_reports")
 }
 
 model RoadHazard {
-  id          String       @id @default(uuid())
+  id          String   @id @default(uuid())
   user_id     String
-  user        User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   hazard_type String
   description String
   latitude    Float
   longitude   Float
   location    String
   image_url   String?
-  status      String       @default("PENDING")
-  created_at  DateTime     @default(now())
-  updated_at  DateTime     @updatedAt
+  status      String   @default("PENDING")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   @@map("road_hazards")
 }
 
 model RoadAlert {
-  id          String        @id @default(uuid())
+  id          String   @id @default(uuid())
   title       String
   description String
   location    String?
   latitude    Float?
   longitude   Float?
-  severity    String        @default("MEDIUM")
-  active      Boolean       @default(true)
+  severity    String   @default("MEDIUM")
+  active      Boolean  @default(true)
   // Geofenced broadcast: when set alongside a coordinate, only devices within
   // this radius receive the alert. Null means network-wide.
   radius_km   Float?
-  created_at  DateTime      @default(now())
-  updated_at  DateTime      @updatedAt
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   @@map("road_alerts")
 }
@@ -116,6 +116,12 @@ model EmergencyService {
   name       String
   type       String
   phone      String
+  // The admin form has always collected these two, but there were no columns
+  // to put them in: the API dropped them and the list rendered the literal
+  // string "undefined" where the region should be. Nullable because every row
+  // that predates them has neither.
+  alt_phone  String?
+  region     String?
   address    String
   latitude   Float
   longitude  Float

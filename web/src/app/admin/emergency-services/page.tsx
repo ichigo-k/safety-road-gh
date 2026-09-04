@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { MapPin, Phone, Plus, X } from 'lucide-react';
+import Link from 'next/link';
+import { MapPin, Phone, Plus } from 'lucide-react';
 
 interface ServiceItem {
   id: string;
@@ -40,17 +41,6 @@ const CATEGORY_STYLES: Record<string, { label: string; pill: string; icon: strin
 export default function AdminEmergencyServicesPage() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('HOSPITAL');
-  const [phone, setPhone] = useState('');
-  const [altPhone, setAltPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [region, setRegion] = useState('Greater Accra');
-  const [latitude, setLatitude] = useState('5.5560');
-  const [longitude, setLongitude] = useState('-0.1969');
 
   const fetchServices = async () => {
     setLoading(true);
@@ -64,32 +54,6 @@ export default function AdminEmergencyServicesPage() {
 
   useEffect(() => { fetchServices(); }, []);
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    const token = localStorage.getItem('adminToken');
-    try {
-      const res = await fetch('/api/v1/emergency-services', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          name, category, phone, altPhone, address, region,
-          latitude: parseFloat(latitude), longitude: parseFloat(longitude),
-        }),
-      });
-      if (res.ok) {
-        setShowModal(false);
-        setName(''); setPhone(''); setAltPhone(''); setAddress(''); setRegion('Greater Accra');
-        fetchServices();
-      } else {
-        alert('Failed to add service.');
-      }
-    } catch { alert('Network error'); }
-    finally { setSubmitting(false); }
-  };
 
   /* group by category */
   const byCategory: Record<string, ServiceItem[]> = {};
@@ -118,13 +82,13 @@ export default function AdminEmergencyServicesPage() {
           <h1 className="text-display font-semibold text-ink-900">Response teams</h1>
           <p className="mt-1 text-body text-ink-500">Police, ambulance, fire, and hospitals across Ghana.</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
+        <Link
+          href="/admin/emergency-services/new"
           className="inline-flex items-center gap-2 rounded-sm bg-brand px-4 py-2.5 text-body font-semibold text-white transition hover:bg-brand-press active:scale-[0.97]"
         >
           <Plus className="h-3.5 w-3.5" />
           Add service
-        </button>
+        </Link>
       </div>
 
       {/* ── Stats ──────────────────────────────────────────────────── */}
@@ -219,80 +183,6 @@ export default function AdminEmergencyServicesPage() {
       )}
 
       {/* ── Add modal ──────────────────────────────────────────────── */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-md overflow-hidden rounded-xl border border-line bg-white shadow-overlay">
-
-            <div className="flex items-center justify-between border-b border-line px-5 py-4">
-              <h2 className="text-base font-semibold text-ink-900">Add emergency contact</h2>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="rounded-sm p-1.5 text-ink-500 hover:bg-ink-50 hover:text-ink-900"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAdd} className="space-y-4 px-5 py-5">
-              <Field label="Facility / unit name">
-                <input required type="text" value={name} onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Ridge Hospital Emergency Unit" className={inputCls} />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Category">
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls}>
-                    <option value="HOSPITAL">Hospital</option>
-                    <option value="POLICE">Police</option>
-                    <option value="FIRE_AMBULANCE">Fire / Ambulance</option>
-                  </select>
-                </Field>
-                <Field label="Region">
-                  <input required type="text" value={region} onChange={(e) => setRegion(e.target.value)}
-                    placeholder="e.g. Ashanti" className={inputCls} />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Phone">
-                  <input required type="text" value={phone} onChange={(e) => setPhone(e.target.value)}
-                    placeholder="193 or +233…" className={inputCls} />
-                </Field>
-                <Field label="Alt phone">
-                  <input type="text" value={altPhone} onChange={(e) => setAltPhone(e.target.value)}
-                    placeholder="Optional" className={inputCls} />
-                </Field>
-              </div>
-
-              <Field label="Address">
-                <input required type="text" value={address} onChange={(e) => setAddress(e.target.value)}
-                  placeholder="e.g. Castle Road, Ridge, Accra" className={inputCls} />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Latitude">
-                  <input required type="text" value={latitude} onChange={(e) => setLatitude(e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="Longitude">
-                  <input required type="text" value={longitude} onChange={(e) => setLongitude(e.target.value)} className={inputCls} />
-                </Field>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-1">
-                <button type="button" onClick={() => setShowModal(false)}
-                  className="rounded-sm border border-line px-4 py-2 text-body font-medium text-ink-600 hover:bg-ink-50">
-                  Cancel
-                </button>
-                <button type="submit" disabled={submitting}
-                  className="rounded-sm bg-brand px-5 py-2 text-body font-semibold text-white hover:bg-brand-press disabled:opacity-50 active:scale-[0.97] transition">
-                  {submitting ? 'Saving…' : 'Save contact'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
