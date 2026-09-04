@@ -6,6 +6,11 @@ web/.env
 web/.env.*
 mobile/.env
 mobile/.env.*
+
+# ...but the templates are part of the project
+!.env.example
+!web/.env.example
+!mobile/.env.example
 node_modules/
 web/node_modules/
 mobile/node_modules/
@@ -19,3 +24,14 @@ build/
 # Local SQLite, superseded by Neon Postgres
 web/prisma/dev.db
 web/prisma/*.db-journal
+
+# Editor and local tooling — kept on disk, not part of the project
+.vscode/
+.idea/
+
+# AI assistant configuration and skill packs
+.claude/
+.agents/
+skills-lock.json
+AGENTS.md
+CLAUDE.md
