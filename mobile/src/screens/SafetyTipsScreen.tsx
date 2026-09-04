@@ -52,9 +52,14 @@ export default function SafetyTipsScreen({ onSelectTip, onBack }: SafetyTipsScre
             </TouchableOpacity>
           )}
           <View style={styles.headerCopy}>
-            <Text style={styles.headerTitle}>Road Safety Guides</Text>
+            {/* Was "National Road Safety Authority (NRSA) & MTTD Guidelines".
+                These tips are written by administrators in the safety library
+                form — the NRSA does not author them, and crediting a real
+                national authority for advice it did not write misrepresents
+                how authoritative it is. */}
+            <Text style={styles.headerTitle}>Safety guidance</Text>
             <Text style={styles.headerSubtitle}>
-              National Road Safety Authority (NRSA) & MTTD Guidelines
+              Practical advice for staying safe on Ghana's roads.
             </Text>
           </View>
         </View>
@@ -92,11 +97,11 @@ export default function SafetyTipsScreen({ onSelectTip, onBack }: SafetyTipsScre
         {loading ? (
           <View style={styles.centerWrap}>
             <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={styles.loadingText}>Loading safety articles...</Text>
+            <Text style={styles.loadingText}>Loading…</Text>
           </View>
         ) : filteredTips.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>No guides found in this category.</Text>
+            <Text style={styles.emptyText}>Nothing here yet for this group.</Text>
           </View>
         ) : (
           filteredTips.map((tip) => (
@@ -106,17 +111,12 @@ export default function SafetyTipsScreen({ onSelectTip, onBack }: SafetyTipsScre
               activeOpacity={0.8}
               onPress={() => onSelectTip?.(tip)}
             >
-              <View style={styles.cardHeader}>
-                <View style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>{tip.category} GUIDE</Text>
-                </View>
-              </View>
               <Text style={styles.title}>{tip.title}</Text>
               <Text numberOfLines={3} style={styles.content}>
                 {tip.content}
               </Text>
               <View style={styles.readMoreRow}>
-                <Text style={styles.readMoreText}>Read full guideline</Text>
+                <Text style={styles.readMoreText}>Read more</Text>
                 <Icon name="chevron" size={14} color={colors.googleBlue} />
               </View>
             </TouchableOpacity>

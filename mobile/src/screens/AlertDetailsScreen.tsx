@@ -66,7 +66,7 @@ export default function AlertDetailsScreen({
             <Icon name="back" size={18} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerCopy}>
-            <Text style={styles.headerTitle}>Advisory Dossier</Text>
+            <Text style={styles.headerTitle}>Advisory</Text>
             <Text style={styles.headerSubtitle}>Ghana Police MTTD Broadcast Network</Text>
           </View>
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.8}>

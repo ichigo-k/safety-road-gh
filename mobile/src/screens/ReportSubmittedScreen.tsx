@@ -27,7 +27,7 @@ export default function ReportSubmittedScreen({
         </Text>
 
         <View style={styles.refCard}>
-          <Text style={styles.refLabel}>OFFICIAL INCIDENT TELEMETRY</Text>
+          <Text style={styles.refLabel}>REFERENCE</Text>
           <Text style={styles.refCode}>QUEUED FOR VERIFICATION</Text>
           <Text style={styles.refHint}>
             You can track real-time verification and officer dispatch in the Reports tab.

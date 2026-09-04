@@ -150,8 +150,8 @@ export default function ReportSubmitScreen({
       });
 
       Alert.alert(
-        'Report Submitted',
-        'Your incident report has been received by Ghana MTTD Officers for verification.'
+        'Report sent',
+        'It has been sent for review. You can follow its progress under My reports.'
       );
       setTitle('');
       setDescription('');
@@ -190,8 +190,8 @@ export default function ReportSubmitScreen({
             </TouchableOpacity>
           )}
           <View style={styles.headerCopy}>
-            <Text style={styles.headerTitle}>File Road Incident</Text>
-            <Text style={styles.headerSubtitle}>Direct transmission to Ghana Police MTTD</Text>
+            <Text style={styles.headerTitle}>Report an incident</Text>
+            <Text style={styles.headerSubtitle}>Sent for review by road safety officers.</Text>
           </View>
         </View>
 
@@ -241,7 +241,7 @@ export default function ReportSubmitScreen({
         {/* ── Hazard Categories ─────────────────────────────────────────────── */}
         {type === 'HAZARD' && (
           <View style={styles.sectionBox}>
-            <Text style={styles.sectionLabel}>Hazard Category</Text>
+            <Text style={styles.sectionLabel}>What kind of hazard?</Text>
             <View style={styles.chipRow}>
               {hazardCategories.map((item) => {
                 const isActive = hazardCategory === item.id;
@@ -269,7 +269,7 @@ export default function ReportSubmitScreen({
 
         {/* ── Incident Details ──────────────────────────────────────────────── */}
         <View style={styles.sectionBox}>
-          <Text style={styles.sectionLabel}>Incident Details</Text>
+          <Text style={styles.sectionLabel}>What happened?</Text>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Title</Text>
@@ -290,7 +290,7 @@ export default function ReportSubmitScreen({
             <Text style={styles.inputLabel}>Description</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Describe road condition, lane obstruction, traffic impact..."
+              placeholder="What should a driver coming this way know?"
               placeholderTextColor={colors.textDisabled}
               multiline
               numberOfLines={4}
@@ -328,7 +328,7 @@ export default function ReportSubmitScreen({
         {/* ── Location Card ─────────────────────────────────────────────────── */}
         <View style={styles.sectionBox}>
           <View style={styles.locationHeaderRow}>
-            <Text style={styles.sectionLabel}>Incident Location</Text>
+            <Text style={styles.sectionLabel}>Where is it?</Text>
             <TouchableOpacity
               onPress={fetchCurrentLocation}
               disabled={locating}
@@ -345,7 +345,7 @@ export default function ReportSubmitScreen({
             style={styles.input}
             value={locationName}
             onChangeText={setLocationName}
-            placeholder="Address, road name or nearby landmark..."
+            placeholder="Road name, or the nearest landmark"
             placeholderTextColor={colors.textDisabled}
           />
           <Text style={styles.coordsText}>
@@ -355,12 +355,12 @@ export default function ReportSubmitScreen({
 
         {/* ── Photo Evidence ────────────────────────────────────────────────── */}
         <View style={styles.sectionBox}>
-          <Text style={styles.sectionLabel}>Photo Evidence</Text>
+          <Text style={styles.sectionLabel}>Add a photo</Text>
 
           <View style={styles.photoActionsRow}>
             <TouchableOpacity style={styles.photoActionBtn} onPress={takePhoto} activeOpacity={0.8}>
               <Icon name="camera" size={18} color={colors.primary} />
-              <Text style={styles.photoActionText}>Take Photo</Text>
+              <Text style={styles.photoActionText}>Camera</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.photoActionBtn} onPress={pickImage} activeOpacity={0.8}>
               <Icon name="gallery" size={18} color={colors.primary} />
@@ -394,7 +394,7 @@ export default function ReportSubmitScreen({
           ) : (
             <>
               <Icon name="shield" size={18} color="#ffffff" />
-              <Text style={styles.submitBtnText}>Submit Incident Report</Text>
+              <Text style={styles.submitBtnText}>Send report</Text>
             </>
           )}
         </TouchableOpacity>
