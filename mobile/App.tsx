@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BackHandler, Platform, StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { getAuthToken, getUserData, removeAuthToken, removeUserData, setUnauthorizedHandler } from './src/services/api';
 import TabBar, { ReportFab, TabItem } from './src/components/TabBar';
 import { colors, spacing } from './src/theme';
@@ -270,6 +271,7 @@ export default function App() {
   ];
 
   return (
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
     <AreaProvider>
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
@@ -475,6 +477,7 @@ export default function App() {
         )}
       </SafeAreaView>
     </AreaProvider>
+    </SafeAreaProvider>
   );
 }
 

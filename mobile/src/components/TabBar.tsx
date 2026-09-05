@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from './Icon';
 import { colors, motion, radius, shadows, spacing } from '../theme';
 
@@ -17,6 +18,9 @@ export interface TabItem {
   icon: string;
   badge?: number;
 }
+
+// Base internal padding below the tabs, before any system-inset is added.
+const BAR_PADDING_BOTTOM = Platform.OS === 'ios' ? spacing.lg : spacing.md;
 
 /* ── Tab bar ─────────────────────────────────────────────────────────────────
  * Deliberately unanimated. A tab switch happens dozens of times a session, so
@@ -66,8 +70,18 @@ export default function TabBar({
   activeKey: string;
   onSelect: (key: string) => void;
 }) {
+  // Android draws edge-to-edge, so the system navigation bar (three-button
+  // ~48dp, gesture ~24dp) sits on top of this bar and hides the tabs. Pad by
+  // its real height. iOS is already cleared by the root SafeAreaView, so we
+  // keep the base gap there and avoid double-insetting.
+  const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === 'android' ? insets.bottom : 0;
+
   return (
-    <View style={s.bar} accessibilityRole="tablist">
+    <View
+      style={[s.bar, { paddingBottom: BAR_PADDING_BOTTOM + bottomInset }]}
+      accessibilityRole="tablist"
+    >
       {items.map((item) => (
         <Tab
           key={item.key}
@@ -118,7 +132,7 @@ const s = StyleSheet.create({
     alignItems: 'stretch',
     backgroundColor: colors.surface,
     paddingTop: spacing.sm,
-    paddingBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
+    paddingBottom: BAR_PADDING_BOTTOM,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
