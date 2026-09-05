@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Download, LayoutDashboard, ShieldCheck, Smartphone } from 'lucide-react';
+import { BookOpen, Download, LayoutDashboard, ShieldCheck, Smartphone } from 'lucide-react';
 export const metadata = {
   title: 'Safety Road GH',
   description: 'Road accident and hazard reporting for Ghana.',
@@ -95,6 +95,12 @@ export default async function RootHomePage() {
             icon={<LayoutDashboard className="h-5 w-5" strokeWidth={2.1} />}
             title="Admin dashboard"
             detail="MTTD operations console"
+          />
+          <Action
+            href="/docs"
+            icon={<BookOpen className="h-5 w-5" strokeWidth={2.1} />}
+            title="API documentation"
+            detail="Interactive OpenAPI reference"
           />
         </div>
 

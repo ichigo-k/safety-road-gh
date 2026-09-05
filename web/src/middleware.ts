@@ -44,6 +44,8 @@ async function verifyEdgeToken(token: string): Promise<EdgeTokenPayload | null> 
 
 /* ── Public routes that never need a token ─────────────────────────────── */
 const PUBLIC_API_ROUTES = [
+  // The OpenAPI spec that the public /docs reference fetches.
+  '/api/openapi.json',
   '/api/v1/auth/login',
   '/api/v1/auth/register',
   '/api/v1/auth/forgot-password',
